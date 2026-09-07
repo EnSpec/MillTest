@@ -122,10 +122,14 @@ exploratory scripts, not run for the manuscript; see `archive/README.md`).
 - `ChemistryAnalysis.R` — observed vs. predicted N and Ca by treatment
   (linear models, RMSE / NRMSE) and a variance-partitioning analysis.
 - `Predicted_Trait_Analysis.R` — Bayesian ANOVA (`brms`) of predicted N and Ca
-  as a function of milling × drying, with species / individual / replicate as
-  nested random effects.
+  as a function of milling × drying, with nested species / species:measurement
+  random intercepts; 4 chains × 20,000 iterations (5,000 warmup),
+  Student-t(3, 0, 2.5) priors on the treatment coefficients. Writes model
+  objects, posterior summaries, trace and coefficient plots to `derived/anova/`.
 - `ParticleStat.R` — particle-size distribution moments (mean, variance, skew,
   kurtosis) averaged by growth form × milling treatment.
+- `archive/` — chlorophyll/lignin/starch model fragments removed from
+  `Predicted_Trait_Analysis.R` (non-functional; not manuscript scope).
 
 ## Environment
 
