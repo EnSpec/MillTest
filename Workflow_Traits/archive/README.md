@@ -12,6 +12,14 @@ pipeline** and not run for the manuscript.
   `Chlorophyll.csv`, `Spp_Checklist.csv`, `Field_Sample_Inventory.csv`), which
   several maintained scripts still read. Kept here as the record of how that
   file was generated.
+- **`Mill24_Trait_Comparisons.R`** — early per-species line plots of predicted
+  traits across milling treatments, by growth form and drying method (A.
+  Majerus). Exploratory; the manuscript reports calcium and nitrogen only.
+  Before archiving it was de-bugged (a broken duplicate call block, a stray
+  auto-print, deprecated `size=` aesthetics), given the proper δ¹⁵N axis
+  label, wired to `data_root` (writes to `derived/trait_comparisons/`), and
+  ~300 lines of dead/commented code were removed. It still runs against
+  `spectralpredictr/DryTraits_NM.csv`.
 
-All three still contain hard-coded paths to the original authors' machines and
-have not been updated to the `data_root` convention.
+`PCA_Processing.R`, `NEW_PCA.R` and `Mill_Test_Analysis.R` still contain
+hard-coded paths to the original authors' machines.

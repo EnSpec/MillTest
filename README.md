@@ -115,10 +115,8 @@ order they run.
 - `Map_Visualization.R` — sample collection-location map.
 
 ### `Workflow_Traits/`
-- `Mill24_Trait_Comparisons.R` — predicted-trait values across milling
-  treatments, by growth form and drying method.
-- `archive/` — superseded PCA and exploratory scripts; not maintained, not run
-  for the manuscript. See `archive/README.md`.
+Nothing maintained here — everything moved to `archive/` (superseded PCA and
+exploratory scripts, not run for the manuscript; see `archive/README.md`).
 
 ### `Workflow_Analysis/`
 - `ChemistryAnalysis.R` — observed vs. predicted N and Ca by treatment
