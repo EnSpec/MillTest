@@ -6,3 +6,6 @@
 
 # local Claude context, not for the shared repo
 CLAUDE.md
+
+# stray R graphics device output
+Rplots.pdf
