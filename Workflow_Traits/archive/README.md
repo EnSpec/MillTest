@@ -14,4 +14,4 @@ pipeline** and not run for the manuscript.
   file was generated.
 
 All three still contain hard-coded paths to the original authors' machines and
-are not wired to `R/paths.R`.
+have not been updated to the `data_root` convention.

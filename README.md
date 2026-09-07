@@ -52,17 +52,23 @@ server:
   spectralpredictr/      SpectralPredictR export CSVs (see below)
   field_data/            sample_info.csv and its field-data inputs
   particle_size/         LS 13 320 particle-size analyzer exports
-  derived/               all script outputs (written via mill_output_path())
+  derived/               all script outputs
 ```
 
 Existing sub-directory names are kept as-is (`ChemResults/` is read directly by
 other projects on the server); `spectralpredictr/`, `field_data/`,
 `particle_size/`, and `derived/` were added.
 
-Scripts reach these paths through [`R/paths.R`](R/paths.R): source it and call
-`mill_path(...)`. Override the root with the `MILL24_DATA_ROOT` environment
-variable. Script outputs are written under `<data_root>/derived/`, never into
-the repo.
+Each script sets its own data location near the top:
+
+```r
+data_root <- Sys.getenv("MILL24_DATA_ROOT",
+                        unset = "/Volumes/Enspec/projects/Mill24")
+```
+
+and builds paths with `file.path(data_root, ...)`. Point at a different copy of
+the data by setting the `MILL24_DATA_ROOT` environment variable before starting
+R. Script outputs are written under `<data_root>/derived/`, never into the repo.
 
 **Files not yet staged on the server** (needed to run the full pipeline — see
 `CLAUDE.md` for the itemised list): the SpectralPredictR export CSVs, the
@@ -71,34 +77,40 @@ analyzer exports.
 
 ## External processing step — SpectralPredictR
 
-Jump correction (detector overlaps at 1001 nm and 1801 nm), unit vector
-normalization, resampling to 5 nm, and PLSR trait prediction using the
-coefficients of Wang et al. (2020b) are performed by **SpectralPredictR**, a
-separate EnSpec tool, not by this repo. Its outputs
-(`SpectralPredictR_*_spectra.csv`, `5nmResampleSpectra_*.csv`,
+Raw `.asd` aggregation, jump correction (detector overlaps at 1001 nm and
+1801 nm), unit vector normalization, resampling to 5 nm, and PLSR trait
+prediction using the coefficients of Wang et al. (2020b) are performed by
+**SpectralPredictR** (github.com/krkovach/SpectralPredictR), not by this repo.
+Its outputs (`SpectralPredictR_*_spectra.csv`, `5nmResampleSpectra_*.csv`,
 `DimensionsDryTraitPredictions.csv`, `DryTraits_{NM,OM}.csv`) are **inputs**
-here and are archived with the dataset deposit.
+here and are archived with the dataset deposit. The exact version of that code
+used for this study is kept on the server under
+`spectralpredictr/` for provenance.
 
 ## Repository layout and run order
 
 Code is grouped by analysis stage. Within each folder scripts are listed in the
 order they run.
 
-### `Workflow_Calculations/` — spectral difference (bias) and bootstrap
-1. `code/BiasCalc.R` — defines `biascalc()`: per-`Sample_ID` pairwise
-   reflectance differences between treatments, plus RMSE / relative RMSE.
-2. `code/BiasFunctionExecution.R` — applies `biascalc()` to every sample.
-3. `code/BiasSummaryCalculation.R` — region-averaged (VIS/NIR/SWIR) percent
-   bias by treatment pair and growth form, from `AllSamplesBIAS.csv`.
-4. `code/BootstrapCode.R` — bootstrap of the difference spectrum across
-   spectral replicates (see manuscript; writes to `BootstrappedData/`).
-- `data/AllSamplesBIAS.csv`, `data/AllSamplesBIASNormalized.csv` — concatenated
-  per-sample bias output (regenerable from `Mill24_RawSpec.csv`).
+### `Workflow_Calculations/` — spectral difference between treatments
+- `code/BootstrapCode.R` — the manuscript method: for each treatment pair
+  within a sample, draw one random spectral replicate per treatment, take the
+  difference across all wavelengths, iterate to build a bootstrap distribution;
+  writes per-pair CSVs to `BootstrappedData/`. **The downstream script that
+  turns `BootstrappedData/` into the figure and cross-treatment summary table
+  is not yet in this repo** (see *Repository status*).
+- `code/BiasCalc.R`, `code/BiasFunctionExecution.R`,
+  `code/BiasSummaryCalculation.R` — the **original** difference-spectrum
+  approach, which *averaged* the six replicates before differencing. Superseded
+  by the bootstrap above and slated for `archive/` once confirmed. `BiasCalc.R`
+  produced `data/AllSamplesBIAS.csv` / `AllSamplesBIASNormalized.csv`.
 
 ### `Workflow_Visualization/`
 - `DataJoin.R` — joins the SpectralPredictR exports to `sample_info.csv`,
   writing the `*Edit.csv` tables the trait/figure scripts read.
-- `BiasFigures.R` — difference-spectrum figure (mill-pair × growth form facets).
+- `BiasFigures.R` — difference-spectrum figure (mill-pair × growth form
+  facets); built on the superseded `BiasCalc.R` output, so it moves to
+  `archive/` with that pipeline unless it is re-pointed at the bootstrap data.
 - `Spectral_Visualization.R` — treatment spectra by species.
 - `Map_Visualization.R` — sample collection-location map.
 
@@ -133,6 +145,6 @@ order they run.
 
 This repo was migrated out of a private student repo and is being cleaned up
 for public release alongside manuscript submission: hard-coded machine paths
-replaced with `R/paths.R`, superseded scripts moved to `archive/`, and a
-script-by-script correctness review is in progress. Open items and review
+replaced with a `data_root` convention, superseded scripts moved to `archive/`,
+and a script-by-script correctness review is in progress. Open items and review
 findings are tracked in `CLAUDE.md` (not published).
