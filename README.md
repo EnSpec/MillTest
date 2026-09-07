@@ -49,7 +49,15 @@ server:
                          TPC / Ankom / 13C15N workbooks
   BootstrappedData/      output of BootstrapCode.R (one CSV per sample/pair)
   LeafScans/, LMA_Processing_Training/
+  spectralpredictr/      SpectralPredictR export CSVs (see below)
+  field_data/            sample_info.csv and its field-data inputs
+  particle_size/         LS 13 320 particle-size analyzer exports
+  derived/               all script outputs (written via mill_output_path())
 ```
+
+Existing sub-directory names are kept as-is (`ChemResults/` is read directly by
+other projects on the server); `spectralpredictr/`, `field_data/`,
+`particle_size/`, and `derived/` were added.
 
 Scripts reach these paths through [`R/paths.R`](R/paths.R): source it and call
 `mill_path(...)`. Override the root with the `MILL24_DATA_ROOT` environment
@@ -111,7 +119,7 @@ order they run.
 
 ## Environment
 
-- **R 4.4.2** (developed under; 4.4.x expected to work).
+- **R 4.4.1** (recorded in `renv.lock`; 4.4.x expected to work).
 - Dependencies are locked with [renv](https://rstudio.github.io/renv/). Run
   `renv::restore()` from the repo root — or just open R there, `.Rprofile`
   auto-activates renv — to install the recorded package versions into a
