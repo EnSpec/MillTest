@@ -4,16 +4,25 @@
 #
 # Project: Mill Test 2024
 #
-# Date: 1/22/2026
+# Date: 1/22/2026 (rewritten 2026-09-11 for the real ParticleDataFull export
+#       format Zach staged -- see note below; the row-index approach this
+#       script used before assumed a raw multi-hundred-row LS 13320
+#       instrument export with pre-computed summary stats at fixed
+#       positions, which is not what landed on the server)
 #
 # Author: Zach Breuer, Mill Test Team
 #
 ##################################################
 
-# NOTE (2026-09-11): blocked on Zach staging particle_size/ParticleDataFull/
-# (requested; not yet on the server). Paths de-hard-coded and the pivot_wider
-# misuse below fixed, but this script has NOT been run against real data --
-# see the FLAGs below for what still needs checking once it lands.
+# Each file under particle_size/data/<session>/ is one sample x treatment:
+# 93 particle-diameter bins ("um") with volume-percent ("Volume", sums to
+# 100 per file) plus Treatment/Type/Sample columns repeated on every row.
+# Distribution moments (mean, variance, skew, kurtosis) are computed here
+# directly from the volume-weighted diameter distribution -- there are no
+# pre-computed stats in this export format. Kurtosis is reported on the
+# "regular"/Pearson scale (~3 for a normal distribution), matching the old
+# script's `Kurtosis + 3` adjustment of an excess-kurtosis instrument value.
+# Moments are computed on raw diameter (um), not log-diameter.
 
 library(tidyverse)
 
@@ -24,86 +33,60 @@ data_root <- Sys.getenv("MILL24_DATA_ROOT",
 out_dir <- file.path(data_root, "derived", "particle_size")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-csvfolder <- file.path(data_root, "particle_size", "ParticleDataFull")
-file_list <- list.files(path = csvfolder, pattern = "*.csv")
-listofdfs <- map(file_list, ~ read.csv(file.path(csvfolder, .x)))
-names(listofdfs) <- basename(file_list)
+csvfolder <- file.path(data_root, "particle_size", "data")
+file_list <- list.files(csvfolder, pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 
-# Edit list to isolate target statistics
-# FLAG: magic row indices (507/530/532/531/49), unchecked against column
-# layout -- confirm these still point at the right rows once real
-# ParticleDataFull/ exports are available.
+read_particle_file <- function(path) {
+  df <- read.csv(path)
+  # Sample/Treatment/Type should be constant within a file (one sample x
+  # treatment per export). Found MILL24_0005_SIXT_10_01.$ls.csv with Sample
+  # incrementing row-by-row (MILL24_0005, 0006, 0007, ...) instead of
+  # staying fixed -- an export/copy-paste artifact, not real data. Flag and
+  # skip rather than silently compute moments from garbage groupings.
+  if (n_distinct(df$Sample) != 1 || n_distinct(df$Treatment) != 1 || n_distinct(df$Type) != 1) {
+    warning(sprintf(
+      "skipping %s: Sample/Treatment/Type not constant within the file (export artifact?) -- flag for Zach",
+      basename(path)
+    ))
+    return(NULL)
+  }
 
-EditList <- lapply(names(listofdfs), function(x) {
-  df <- listofdfs[[x]] %>%
-    dplyr::slice(c(507, 530, 532, 531, 49))
-})
-names(EditList) <- basename(file_list)
-EditList <- EditList %>%
-  map(
-    # was `values_from = .data$X` -- .data$X evaluates to a vector, not a
-    # valid tidyselect spec; pivot_wider wants the column itself.
-    ~ pivot_wider(.x, names_from = X.common., values_from = X)) %>%
-  map(
-    ~ mutate(.x, Mean = as.double(Mean), Variance = as.double(Variance), Skew = as.double(Skew), Kurtosis = as.double(Kurtosis))) %>%
-   map(
-    ~ mutate(.x, Kurtosis = Kurtosis + 3))
+  w <- df$Volume / sum(df$Volume)
+  d <- df$um
+  mean_d <- sum(w * d)
+  var_d  <- sum(w * (d - mean_d)^2)
+  sd_d   <- sqrt(var_d)
 
-# Divide dataframes by milling treatment
-# FLAG: the manuscript methods describe moments "averaged by growth form x
-# milling treatment (22 individuals)" -- this only splits by milling
-# treatment (BALL/TWEN/SIXT via a GroupID grep), with no growth-form
-# (broadleaf/conifer) split at all. GroupID's format/what it encodes is
-# unknown without real ParticleDataFull/ exports; can't safely add the
-# growth-form join until that lands. Confirm with Zach/Henry whether growth
-# form needs to be crossed in here, and how GroupID maps to Sample_ID.
+  tibble(
+    Sample    = df$Sample[1],
+    Treatment = df$Treatment[1],
+    Type      = df$Type[1],
+    Mean      = mean_d,
+    Variance  = var_d,
+    Skew      = sum(w * (d - mean_d)^3) / sd_d^3,
+    Kurtosis  = sum(w * (d - mean_d)^4) / sd_d^4
+  )
+}
 
-BallList <- keep(
-  EditList,
-  ~ any(grepl("BALL", .x[["GroupID"]]), na.rm = TRUE)
-)
-TwenList <- keep(
-  EditList,
-  ~ any(grepl("TWEN", .x[["GroupID"]]), na.rm = TRUE)
-)
-FineList <- keep(
-  EditList,
-  ~ any(grepl("SIXT", .x[["GroupID"]]), na.rm = TRUE)
-)
+particle_moments <- map(file_list, read_particle_file) %>%
+  compact() %>%
+  bind_rows()
 
-# Clean data frames and calculate means of target statistics
+# --- average moments by growth form x milling treatment (per manuscript methods) ---
 
-BallList <- BallList %>%  map(
-  ~ select(.x, Mean, Variance, Skew, Kurtosis))
-BallMeans <- bind_rows(BallList) %>% 
-  summarise(Mean = mean(Mean), Variance = mean(Variance), Skew = mean(Skew), Kurtosis = mean(Kurtosis))
-TwenList <- TwenList %>%  map(
-  ~ select(.x, Mean, Variance, Skew, Kurtosis))
-TwenMeans <- bind_rows(TwenList) %>% 
-  summarise(Mean = mean(Mean), Variance = mean(Variance), Skew = mean(Skew), Kurtosis = mean(Kurtosis))
-FineList <- FineList %>%  map(
-  ~ select(.x, Mean, Variance, Skew, Kurtosis))
-FineMeans <- bind_rows(FineList) %>% 
-  summarise(Mean = mean(Mean), Variance = mean(Variance), Skew = mean(Skew), Kurtosis = mean(Kurtosis))
-BallAbsMeans <- bind_rows(BallList) %>% 
-  summarise(Mean = mean(Mean), Variance = mean(Variance), Skew = mean(abs(Skew)), Kurtosis = mean(abs(Kurtosis)))
-TwenAbsMeans <- bind_rows(TwenList) %>% 
-  summarise(Mean = mean(Mean), Variance = mean(Variance), Skew = mean(abs(Skew)), Kurtosis = mean(abs(Kurtosis)))
-FineAbsMeans <- bind_rows(FineList) %>%
-  summarise(Mean = mean(Mean), Variance = mean(Variance), Skew = mean(abs(Skew)), Kurtosis = mean(abs(Kurtosis)))
-
-# Collect and write results -- previously computed but never saved anywhere.
-particle_summary <- bind_rows(
-  BallMeans     %>% mutate(MillingTreatment = "BALL", Metric = "raw"),
-  TwenMeans     %>% mutate(MillingTreatment = "TWEN", Metric = "raw"),
-  FineMeans     %>% mutate(MillingTreatment = "SIXT", Metric = "raw"),
-  BallAbsMeans  %>% mutate(MillingTreatment = "BALL", Metric = "abs_skew_kurtosis"),
-  TwenAbsMeans  %>% mutate(MillingTreatment = "TWEN", Metric = "abs_skew_kurtosis"),
-  FineAbsMeans  %>% mutate(MillingTreatment = "SIXT", Metric = "abs_skew_kurtosis")
-) %>%
-  relocate(MillingTreatment, Metric)
+particle_summary <- particle_moments %>%
+  group_by(Type, Treatment) %>%
+  summarise(
+    n = n(),
+    Mean         = mean(Mean),
+    Variance     = mean(Variance),
+    Skew         = mean(Skew),
+    Kurtosis     = mean(Kurtosis),
+    AbsSkew      = mean(abs(Skew)),
+    AbsKurtosis  = mean(abs(Kurtosis)),
+    .groups = "drop"
+  )
 
 print(particle_summary)
-write.csv(particle_summary, file.path(out_dir, "particle_size_summary.csv"),
-          row.names = FALSE)
-
+write.csv(particle_moments, file.path(out_dir, "particle_size_per_sample.csv"), row.names = FALSE)
+write.csv(particle_summary, file.path(out_dir, "particle_size_summary.csv"), row.names = FALSE)
