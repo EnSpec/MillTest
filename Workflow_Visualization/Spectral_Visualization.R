@@ -11,13 +11,19 @@
 library(tidyverse)
 library(reshape2)
 
-#spectral_data = read.csv('C:\\Users\\amajerus\\Desktop\\MillTest\\MillTest_Local\\PCAFiles\\5nmResampleSpectra_OM.csv')
+# --- data location (see README) --------------------------------------------
+data_root <- Sys.getenv("MILL24_DATA_ROOT",
+                        unset = "/Volumes/Enspec/projects/Mill24")
 
-# better to show the 1-nm data... working with 5 nm for now,
-# I set the path assuming code is in the Gitfolder
-spectral_data = read.csv('PCA_Figures/CSV_Data/5nmResampleSpectra_OM.csv')
-
-
+# FLAG (2026-09-11): 5nmResampleSpectra_OM.csv is one of the per-treatment
+# SpectralPredictR splits still missing from spectralpredictr/ (see its
+# README) -- Zach hasn't staged it, and it's not the same file as
+# SpectralPredictR_5nmresampled_spectra.csv (the un-split file
+# SpectralPredictR.R now produces for real). This script is blocked until
+# that lands or DataJoin.R's *Edit.csv split-by-treatment output is confirmed
+# as the regenerable equivalent -- see CLAUDE.md. Path de-hard-coded below,
+# but not run against real data.
+spectral_data = read.csv(file.path(data_root, "spectralpredictr", "5nmResampleSpectra_OM.csv"))
 
 # lab_comb_row is a dataframe three columns of identifying info (sample_name, lab, and sample_id and then all spectral columns)
 
@@ -27,29 +33,16 @@ lab_comb_row_melt <- spectral_data %>% dplyr::select(sample_name, Sample_ID, Mil
 GgTreat <- melt(lab_comb_row_melt, variable.name = "Wavelength", value.name = "Reflectance", id.vars = c('sample_name', 'Sample_ID', 'MillMethod', 'Species_Code', 'DryingMethod'))
 GgTreat$Wavelength <- as.numeric(str_split(GgTreat$Wavelength, 'X', simplify = TRUE)[,2])
 
-# this should conditionally assign the figure file path based on user. Check the Sys.info output to make sure the user condition is right
-FigFolderOD <- if (Sys.info()['user'] == 'henryfrye') {
-  '/Users/henryfrye/Dropbox/Intellectual_Endeavours/Wisconsin/DrySpec_Milling_Comparison/Mill_Figures/Spectral_Vis/Oven_dried'
-} else if (Sys.info()['user'] == 'amajerus') {
-  'C:\\Users\\amajerus\\Desktop\\MillTest\\MillTest_Local\\Figures\\Spectra\\OD'
-} else {
-  'default/path/if/needed'
-}
-
-FigFolderFF <- if (Sys.info()['user'] == 'henryfrye') {
-  '/Users/henryfrye/Dropbox/Intellectual_Endeavours/Wisconsin/DrySpec_Milling_Comparison/Mill_Figures/Spectral_Vis/Flash_frozen'
-} else if (Sys.info()['user'] == 'amajerus') {
-  "C:\\Users\\amajerus\\Desktop\\MillTest\\MillTest_Local\\Figures\\Spectra\\FF"
-} else {
-  'default/path/if/needed'
-}
-
-FigFolderODFF <- if (Sys.info()['user'] == 'henryfrye') {
-  '/Users/henryfrye/Dropbox/Intellectual_Endeavours/Wisconsin/DrySpec_Milling_Comparison/Mill_Figures/Spectral_Vis/Dry_method'
-} else if (Sys.info()['user'] == 'amajerus') {
-  "C:\\Users\\amajerus\\Desktop\\MillTest\\MillTest_Local\\Figures\\Spectra\\ODFF"
-} else {
-  'default/path/if/needed'
+# Was a per-user Sys.info()['user'] branch (henryfrye / amajerus / a
+# 'default/path/if/needed' fallback that would have silently written figures
+# into a literal relative folder named that). Now under derived/, like every
+# other script's output.
+out_dir <- file.path(data_root, "derived", "spectral_visualization")
+FigFolderOD   <- file.path(out_dir, "Oven_dried")
+FigFolderFF   <- file.path(out_dir, "Flash_frozen")
+FigFolderODFF <- file.path(out_dir, "Dry_method")
+for (d in c(FigFolderOD, FigFolderFF, FigFolderODFF)) {
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
 }
 
 # Figures comparing flash frozen vs. oven-dried for 20 mesh Wiley #####
@@ -83,8 +76,11 @@ GgTreat  <- GgTreat %>% mutate(MillMethod = case_when(
   TRUE ~ MillMethod
 ))
 
-# check for any issues
-length(which(is.na(GgTreat$Species) == TRUE))
+# check for any issues (was a bare top-level expression -- Rscript doesn't
+# auto-print those outside an interactive session, so this silently did
+# nothing when run as a script)
+message(sprintf("Species mapping: %d unmatched Species_Code rows",
+                sum(is.na(GgTreat$Species))))
 
 # run for loop
 for(i in 1:length(spp_code)){
