@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the metadata below. See also
+  the manuscript this code supports (citation TBD) and the companion
+  trait + spectra dataset on EcoSIS (DOI TBD).
+title: "MillTest: analysis code for the Mill Test 2024 milling/drying treatment comparison"
+type: software
+license: GPL-3.0
+repository-code: "https://github.com/EnSpec/MillTest"
+authors:
+  - family-names: Frye
+    given-names: Henry
+    affiliation: "University of Wisconsin-Madison"
+    email: hfrye2@wisc.edu
+  - family-names: Breuer
+    given-names: Zach
+    affiliation: "University of Wisconsin-Madison"
+    email: zbreuer@wisc.edu
+  - family-names: Majerus
+    given-names: Annabelle
+    affiliation: "University of Wisconsin-Madison"
+references:
+  - type: software
+    title: SpectralPredictR
+    authors:
+      - family-names: Kovach
+        given-names: Kyle R.
+    repository-code: "https://github.com/krkovach/SpectralPredictR"
+  - type: dataset
+    title: NEON-Trait-Models
+    repository-code: "https://github.com/EnSpec/NEON-Trait-Models"
+    url: "https://ecosml.org/package/github/EnSpec/NEON-Trait-Models"
