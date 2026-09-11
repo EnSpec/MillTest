@@ -28,11 +28,12 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 # --- inputs ---------------------------------------------------------------
 
-# FIXME: the original script read "ChemResults/DryTraits_NEONModel.csv" here,
-# but the file of that name on the server has no `sampledata_head` column and
-# no calcium prediction. DimensionsDryTraitPredictions.csv is the file whose
-# columns match what this script uses. Revisit once the SpectralPredictR
-# trait-prediction code is in the repo -- see CLAUDE.md.
+# The original script read "ChemResults/DryTraits_NEONModel.csv" here, but the
+# file of that name on the server has no `sampledata_head` column and no
+# calcium prediction. Confirmed 2026-09-11: DimensionsDryTraitPredictions.csv
+# is the right file -- it's the actual output of Workflow_Calculations/code/
+# SpectralPredictR.R (run against real DrySpec/ data that day), not a
+# placeholder anymore.
 predicted_file <- file.path(data_root, "spectralpredictr",
                             "DimensionsDryTraitPredictions.csv")
 
