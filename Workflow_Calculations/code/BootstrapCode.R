@@ -2,11 +2,11 @@
 #
 # Mill Test Bootstrap Resampling
 #
-# Authors: Mill Test Team
+# Authors: Zach Breuer, Mill Test Team
 #
 # Project: Mill Test
 #
-# Date: 4/29/2026
+# Date: 4/29/2026 (paths de-hard-coded -- 2026-09-11)
 #
 ##########################################################
 
@@ -15,7 +15,13 @@ library(boot)
 library(doParallel)
 library(foreach)
 library(gtools)
-setwd("C:/Mill24/Bootstrapped")
+
+# --- data location (see README) --------------------------------------------
+data_root <- Sys.getenv("MILL24_DATA_ROOT",
+                        unset = "/Volumes/Enspec/projects/Mill24")
+
+out_dir <- file.path(data_root, "BootstrappedData")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 set.seed(0220)
 cores <-  detectCores() - 1
@@ -23,10 +29,15 @@ cluster <- makeCluster(cores)
 registerDoParallel(cluster)
 
 
-spectraldata <- read.csv("C:/Mill24/SpectraUpdated/Mill24_RawSpec.csv") %>% 
+spectraldata <- read.csv(file.path(data_root, "Mill24_RawSpec.csv")) %>%
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
+# FLAG (2026-09-11): iteration count changed 1500 -> 999 in Zach's 2026-09-08
+# push (commit 379148f). The repo previously had 1500 (methods say 1200) --
+# this is now a third value. Confirm with Zach/Henry which iteration count is
+# intended before treating bootstrap output as final; unchanged here per
+# Henry's instruction to flag rather than pick a number ourselves.
 iteration = 999
 
 for(sample in unique(spectraldata$SampleID)) {
@@ -46,13 +57,20 @@ output = list()
     treatment2 = spectraldatasubset %>% 
       filter(treatment == treatmentcombination[e, 2])
     
+    # FLAG (2026-09-11): the `for(q in 1:6)` loop below + group_by/summarize is
+    # new in Zach's 2026-09-08 push. It changes the per-iteration draw from one
+    # random replicate-pair difference (what the methods describe: "one random
+    # replicate per treatment, difference, iterate") to the MEAN of 6 such
+    # draws per iteration. That's a different bootstrap procedure, not a bug
+    # fix -- confirm with Zach whether this was intentional before trusting
+    # this output for the manuscript figure/table.
     distributiondf <- foreach(j = 1:iteration, .combine = rbind, .packages = "tidyverse") %dopar% {
       bootstorage <-  intersect(treatment1[,3:ncol(treatment1)], treatment2[,3:ncol(treatment2)])
       for(q in 1:6){
         bootstorage <- rbind(bootstorage, treatment1[sample(1:nrow(treatment1), size = 1),4:ncol(treatment1)] - treatment2[sample(1:nrow(treatment2), size = 1),4:ncol(treatment2)])
       }
-    
-      bootstorage %>% 
+
+      bootstorage %>%
         mutate(sample_name = sample) %>% 
         mutate(treatment1 = treatmentcombination[e, 1]) %>% 
         mutate(treatment2 = treatmentcombination[e, 2]) %>% 
@@ -62,7 +80,11 @@ output = list()
   output[[e]] <- distributiondf
                     }
   for (i in seq_along(output)){
-    write.csv(output[[i]], file = paste(output[[i]][["sample_name"]][1],"_", output[[i]][["treatment1"]][1], "_", output[[i]][["treatment2"]][1], ".csv"), row.names = F)
+    # `paste0` here, not `paste` -- Zach's 2026-09-08 push changed this to
+    # `paste`, whose default sep=" " puts literal spaces into the filename
+    # (e.g. "MILL24_0001 _ FF_TWEN _ OD_TWEN .csv"). Reverted; the naming
+    # convention (MILL24_0030_FF_TWEN_OD_TWEN.csv) is relied on elsewhere.
+    write.csv(output[[i]], file = file.path(out_dir, paste0(output[[i]][["sample_name"]][1], "_", output[[i]][["treatment1"]][1], "_", output[[i]][["treatment2"]][1], ".csv")), row.names = F)
   }
 }
 
