@@ -13,7 +13,7 @@ Sizes are approximate (`du -h`), current as of 2026-09-11.
 | `Mill24_RawSpec.csv` | 58M | Raw ASD spectra, all samples x treatments x replicates. The base of every spectral analysis in the manuscript. |
 | `field_data/sample_info.csv` | 10K | Canonical per-sample metadata: Sample_ID, Species_Code, Species, Type, coordinates, fresh/dry mass, water content, chlorophyll (Chl1-5), sampling date. |
 | `ChemResults/Brookside.csv` | 54K | Observed wet chemistry (N, Ca, K, P) from Brookside Labs — OD + 20-mesh material only. Ground truth for the RMSE/NRMSE comparison. |
-| `particle_size/ParticleDataFull/*.csv` | — | Raw LS 13320 particle-size-analyzer exports, one per sample. **Not yet on the server — Zach is staging these (requested 2026-09-11).** |
+| `particle_size/data/**/*.csv` | 2.1M | Raw LS 13320 particle-size-analyzer exports, one per sample x treatment (64 files, volume-% by diameter bin). Staged by Zach 2026-09-11. One file (`MILL24_0005_SIXT_10_01.$ls.csv`) has a known export artifact (Sample column increments instead of staying fixed) — `ParticleStat.R` skips it; regenerate that one file before deposit if possible. |
 
 Also consider whether the raw `DrySpec/{FreezeDried,OvenDried}/*.asd` files
 (102M, 2418 files) should be included alongside `Mill24_RawSpec.csv`, or
