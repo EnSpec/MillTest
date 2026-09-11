@@ -41,9 +41,7 @@ same numbers used in the manuscript.
 
 | File | Size | Issue |
 |---|---|---|
-| `spectralpredictr/DryTraits_NM.csv` | 3.1M | **Still Henry's placeholder** — not produced by any script currently in the repo. Used by `Predicted_Trait_Analysis.R` only for the Sample_ID -> Type/Species/Species_Code lookup (not for trait values). Needs either a real regeneration path or confirmation that its current content is actually fine to publish as-is. |
-| `spectralpredictr/DryTraits_OM.csv` | 3.3M | Same status as `DryTraits_NM.csv`; not read by anything in the current repo — confirm whether it's needed for the deposit at all. |
-| `spectralpredictr/5nmResampleSpectra_{NM,OM,OD_NM,OD_OM}.csv` | — | Per-treatment SpectralPredictR splits, still not staged. Needed by `Spectral_Visualization.R`; NM/OM/OD_NM/OD_OM meaning still unconfirmed (guess: NEON Model / Other Model — unconfirmed). |
+| `spectralpredictr/DryTraits_NM.csv` | 3.1M | **Still Henry's placeholder** — not produced by any script currently in the repo. Used by `Predicted_Trait_Analysis.R` only for the Sample_ID -> Type/Species/Species_Code lookup (not for trait values). Needs either a real regeneration path or confirmation that its current content is actually fine to publish as-is. NM = "New Mill", the rotary mill equipment actually used for the study (confirmed 2026-09-11). |
 
 ## Out of scope for this manuscript — confirm before bundling
 
@@ -60,6 +58,18 @@ particular is read directly by `chemistry-sample-handling`'s
 `isotope_comparison_results.R` on the server — see CLAUDE.md's server-layout
 notes). Confirm with Henry/Zach whether any of these should ride along with
 this deposit or stay with that project's own release.
+
+**Not needed at all** (confirmed 2026-09-11, not just "out of scope" — actively
+excluded): `spectralpredictr/DryTraits_OM.csv` and the
+`5nmResampleSpectra_{OM,OD_OM}.csv` splits. OM = "Old Mill", one side of an
+early rotary-mill-equipment comparison (Wiley vs. Eberbach) that was piloted
+in the pipeline but dropped from the manuscript entirely — confirmed the OM
+and NM trait files cover the identical 66 samples/treatments, just from the
+two different mill machines. `Spectral_Visualization.R`, the only script
+that read the OM split, has been archived
+(`Workflow_Visualization/archive/`). `5nmResampleSpectra_{NM,OD_NM}.csv`
+would only be needed if that script is ever revived against the real (NM)
+mill instead.
 
 ## Not applicable / regenerable in-repo, no staging needed
 

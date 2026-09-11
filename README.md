@@ -111,8 +111,11 @@ order they run.
 - `BiasFigures.R` — difference-spectrum figure (mill-pair × growth form
   facets); built on the superseded `BiasCalc.R` output, so it moves to
   `archive/` with that pipeline unless it is re-pointed at the bootstrap data.
-- `Spectral_Visualization.R` — treatment spectra by species.
 - `Map_Visualization.R` — sample collection-location map.
+
+`Spectral_Visualization.R` moved to `archive/` — it read spectra from an
+abandoned mill-equipment comparison (Wiley vs. Eberbach), not the study's
+reported mill; see `archive/README.md`.
 
 ### `Workflow_Traits/`
 Nothing maintained here — everything moved to `archive/` (superseded PCA and
