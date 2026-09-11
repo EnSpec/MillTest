@@ -44,7 +44,7 @@ BootDataSampleMean <- full_join(BootDataSampleMean, sampleinfo, join_by(sample_n
 
 columnnames <- c("sample_name", "Type", "treatment1", "treatment2", "stat")
 
-BootDataSamplePivot <- pivot_longer(BootDataSampleMean, cols = !columnnames) %>% 
+BootDataSamplePivot <- pivot_longer(BootDataSampleMean, cols = !all_of(columnnames)) %>% 
   rename(Wavelength = name, Reflectance = value) %>% 
   mutate(Wavelength = strtoi(substring(Wavelength, 2)))
 
@@ -98,7 +98,7 @@ bias <- bias %>%
 
 # Pivot data frame to calculate stats
 columnnames <- c("sample_name", "Type", "treatment1", "treatment2")
-biaspivot = pivot_longer(bias, cols = !columnnames)
+biaspivot = pivot_longer(bias, cols = !all_of(columnnames))
 biaspivot = biaspivot %>% 
   rename(Wavelength = name) %>% 
   rename(PercentBias = value) %>% 
