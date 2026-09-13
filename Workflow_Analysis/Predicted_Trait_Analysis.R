@@ -2,16 +2,26 @@
 # Predicted_Trait_Analysis.R
 #
 # Bayesian ANOVA (brms) of spectrally predicted nitrogen and calcium as a
-# function of milling x drying treatment, with species and species:measurement
-# as nested random intercepts. Coefficients are expressed relative to
-# oven-dried, coarse (20-mesh) rotary-milled samples.
+# function of milling x drying treatment, with three nested random
+# intercepts: species identity, individual tree within species, and
+# measurement (treatment combination) within individual. Coefficients are
+# expressed relative to oven-dried, coarse (20-mesh) rotary-milled samples.
 #
 # Author(s): Mill Test Team
 # (2026 cleanup: de-hard-coded paths; nitrogen model raised to iter = 20000
 #  to match calcium and the methods; explicit Student-t(3, 0, 2.5) priors on
 #  the treatment coefficients; the chlorophyll/lignin/starch/phenolics model
 #  fragments -- pasted from another project and non-functional here -- moved
-#  to archive/.)
+#  to archive/. 2026-09-13: restored the 3-level nested random-effects
+#  structure -- (1|Species_Code) + (1|Species_Code:SampleID) +
+#  (1|Species_Code:SampleID:measure_id) -- from Henry's actual
+#  manuscript-generating copy of this script. The version originally cloned
+#  into this repo had a simpler, explicitly-WIP 2-term structure
+#  ((1|Species_Code) + (1|Species_Code:measure_id), commented "#to try:...")
+#  that was never the manuscript's model; every brms run in this repo before
+#  today used it by mistake. This also resolves the individual-vs-measurement
+#  random-effect SD mismatch flagged against the methods text since 09-07 --
+#  it was a missing model term, not a methods-text imprecision.)
 ########################################################
 
 library(tidyverse)
@@ -77,7 +87,8 @@ trt_prior <- prior(student_t(3, 0, 2.5), class = "b")
 fit_trait <- function(response) {
   brm(
     formula = bf(paste0(response, " ~ MillTreat * DryTreat +",
-                        " (1 | Species_Code) + (1 | Species_Code:measure_id)")),
+                        " (1 | Species_Code) + (1 | Species_Code:SampleID) +",
+                        " (1 | Species_Code:SampleID:measure_id)")),
     family  = gaussian(),
     data    = traits_clean,
     prior   = trt_prior,
@@ -99,8 +110,9 @@ coef_labels <- c(
   b_DryTreatFF                 = "Flash freezing",
   `b_MillTreatBALL:DryTreatFF` = "Ball Mill / Flash-freeze interaction",
   `b_MillTreatFINE:DryTreatFF` = "Fine Rotary / Flash-freeze interaction",
-  sd_Species_Code__Intercept              = "Species random effect s.d.",
-  `sd_Species_Code:measure_id__Intercept` = "Species:Measurement random effect s.d."
+  sd_Species_Code__Intercept                          = "Species random effect s.d.",
+  `sd_Species_Code:SampleID__Intercept`               = "Individual (within species) random effect s.d.",
+  `sd_Species_Code:SampleID:measure_id__Intercept`    = "Measurement (within individual) random effect s.d."
 )
 
 report_model <- function(model, tag) {
