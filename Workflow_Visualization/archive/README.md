@@ -15,3 +15,11 @@ pipeline** and not run for the manuscript.
   the abandoned equipment axis. Archived rather than re-pointed at NM since
   the comparison itself, not just the file it reads, was dropped from
   scope.
+- **`BiasFigures.R`** — figures for the averaging-based difference-spectrum
+  approach (see `Workflow_Calculations/archive/README.md`). Superseded by
+  the bootstrap pipeline (`BootstrapCode.R` /
+  `BootstrapFigureGeneration.R`), which the manuscript describes. Henry
+  confirmed archiving 2026-09-13. Reads `sample_info.csv` with
+  `select(-ScientificName)`, a column that doesn't exist in the real file —
+  would error if run as-is; left unfixed since it's archived, not
+  maintained.
