@@ -15,7 +15,7 @@ library(boot)
 library(doParallel)
 library(foreach)
 library(gtools)
-setwd("C:/Mill24/Bootstrapped")
+setwd("Z:projects/Mill24/BootstrappedData")
 
 set.seed(0220)
 cores <-  detectCores() - 1
@@ -23,7 +23,7 @@ cluster <- makeCluster(cores)
 registerDoParallel(cluster)
 
 
-spectraldata <- read.csv("C:/Mill24/SpectraUpdated/Mill24_RawSpec.csv") %>% 
+spectraldata <- read.csv("Z:/projects/Mill24/Mill24_RawSpec.csv") %>% 
   mutate(SampleID = substring(sample_name, 1, 11))
 
 

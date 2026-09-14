@@ -215,7 +215,7 @@ ggsave("ChemPlotGrid.png", ObsvsPredPlotGrid, dpi = 320, scale = 2, width = 5, h
 
 # Load in sample information and join with chemistry data
 
-sample_info <- read.csv("C:/Mill24/PCAFigures/PCA_Figures/CSV_Data/sample_info.csv") %>% 
+sample_info <- read.csv("Z:/projects/Mill24/field_data/sample_info.csv") %>% 
   select(Sample_ID, Species_Code, Type)
 
 PredictedChemVPA <- full_join(PredictedChem, sample_info, join_by(Sample_ID)) %>%  

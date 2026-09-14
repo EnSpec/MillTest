@@ -13,13 +13,13 @@
 library(tidyverse)
 setwd("C:/Mill24/Bootstrapped")
 
-file_list <- list.files(path = "C:/Mill24/data/BootstrappedData", pattern = ".csv", full.names = TRUE)
+file_list <- list.files(path = "Z:/projects/Mill24/BootstrappedData", pattern = ".csv", full.names = TRUE)
 
 BootDataFull <- lapply(file_list, read.csv) %>% 
   bind_rows()
 
 
-sampleinfo <- read.csv("C:/Mill24/data/DiffCalcRawSpectra/ConiferVsBroadleaf/sample_info.csv") %>% 
+sampleinfo <- read.csv("Z:/projects/Mill24/field_data/sample_info.csv") %>% 
   rename(sample_name = Sample_ID) %>% 
   select(sample_name, Type)
 
