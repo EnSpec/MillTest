@@ -12,8 +12,8 @@
 
 # Set working directory, load in necessary libraries, and load in data with proper names
 library(tidyverse)
-setwd("C:/Mill24/data/particle_size_analysis/ParticleDataFull")
-csvfolder <- "C:/Mill24/data/particle_size_analysis/ParticleDataFull"
+setwd("Z:/projects/Mill24/particle_size/data/full")
+csvfolder <- "Z:/projects/Mill24/particle_size/data/full"
 file_list <- list.files(path = csvfolder, pattern = "*.csv")
 listofdfs <- map(file_list, read.csv)
 names(listofdfs) <- basename(file_list)
