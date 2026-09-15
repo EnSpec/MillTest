@@ -4,25 +4,31 @@
 #
 # Project: Mill Test 2024
 #
-# Date: 1/22/2026 (rewritten 2026-09-11 for the real ParticleDataFull export
-#       format Zach staged -- see note below; the row-index approach this
-#       script used before assumed a raw multi-hundred-row LS 13320
-#       instrument export with pre-computed summary stats at fixed
-#       positions, which is not what landed on the server)
+# Date: 1/22/2026 (rewritten 2026-09-11 for a "clean per-bin" export format
+#       that turned out not to be what Zach actually produces; rewritten
+#       again 2026-09-15 for the real format -- see note below)
 #
 # Author: Zach Breuer, Mill Test Team
 #
 ##################################################
 
-# Each file under particle_size/data/<session>/ is one sample x treatment:
-# 93 particle-diameter bins ("um") with volume-percent ("Volume", sums to
-# 100 per file) plus Treatment/Type/Sample columns repeated on every row.
-# Distribution moments (mean, variance, skew, kurtosis) are computed here
-# directly from the volume-weighted diameter distribution -- there are no
-# pre-computed stats in this export format. Kurtosis is reported on the
-# "regular"/Pearson scale (~3 for a normal distribution), matching the old
-# script's `Kurtosis + 3` adjustment of an excess-kurtosis instrument value.
-# Moments are computed on raw diameter (um), not log-diameter.
+# 2026-09-15: the LS 13320 software's own export ("full distribution data")
+# is a multi-block text dump (instrument settings, then a [SampleStats]
+# section with the software's own pre-computed Mean/Variance/Skew/Kurtosis
+# for that run, then a [#Bindiam]/[SizePctY] per-bin distribution table we
+# don't need since the moments are already computed for us). This is what
+# particle_size/data/full/ actually holds, and what Zach's own
+# (pre-cleanup) ParticleStat.R -- still the version he runs day to day --
+# reads via fixed row-slice indices (507/530/532/531/49). Verified those
+# five indices land exactly on Mean/Variance/Kurtosis/Skew/GroupID in every
+# file checked, so the instrument's export format is consistent -- but
+# reading by row position is fragile against any future export-software
+# change, so this version looks up rows by their label (column 1) instead.
+# Kurtosis is converted from the instrument's excess-kurtosis convention to
+# the "regular"/Pearson scale (~3 for a normal distribution) via +3, same
+# as Zach's original script. GroupID (e.g. "MILL24_0005_SIXT") gives
+# Sample + milling treatment directly; growth-form Type isn't in this
+# export at all and is joined in from field_data/sample_info.csv.
 
 library(tidyverse)
 
@@ -47,40 +53,71 @@ csvfolder <- file.path(data_root, "particle_size", "data", "full")
 file_list <- list.files(csvfolder, pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 
 read_particle_file <- function(path) {
-  df <- read.csv(path)
-  # Sample/Treatment/Type should be constant within a file (one sample x
-  # treatment per export). Found MILL24_0005_SIXT_10_01.$ls.csv with Sample
-  # incrementing row-by-row (MILL24_0005, 0006, 0007, ...) instead of
-  # staying fixed -- an export/copy-paste artifact, not real data. Flag and
-  # skip rather than silently compute moments from garbage groupings.
-  if (n_distinct(df$Sample) != 1 || n_distinct(df$Treatment) != 1 || n_distinct(df$Type) != 1) {
+  raw <- read.csv(path, header = FALSE, stringsAsFactors = FALSE)
+
+  get_val <- function(label) {
+    idx <- which(raw$V1 == label)
+    if (length(idx) == 0) return(NA_character_)
+    raw$V2[idx[1]]
+  }
+
+  # "Mean" (and potentially other labels) also appears earlier in the file
+  # as part of unrelated all-zero settings blocks -- e.g. "Mean, 0, 0, 0"
+  # twice before the real distribution stats. Scope the moment lookups to
+  # rows at or after [SizeStats], the section that actually holds them.
+  # GroupID/Operator appear before [SizeStats] too (and are consistent
+  # between their two occurrences in every file checked), so those use the
+  # unrestricted lookup above.
+  sizestats_idx <- which(raw$V1 == "[SizeStats]")[1]
+  get_stat <- function(label) {
+    idx <- which(raw$V1 == label & seq_len(nrow(raw)) >= sizestats_idx)
+    if (length(idx) == 0) return(NA_character_)
+    raw$V2[idx[1]]
+  }
+
+  # Filenames look like MILL24_0005_SIXT_10_01.$ls.csv; GroupID inside the
+  # file should be the "MILL24_0005_SIXT" prefix before the trailing run
+  # numbers. Found MILL24_0005_SIXT_10_01.$ls.csv with GroupID incrementing
+  # per row instead of matching the filename -- an export/copy-paste
+  # artifact (hand-fixed by Henry 2026-09-15). Flag and skip rather than
+  # silently trust a mismatched or missing GroupID.
+  expected_group_id <- sub("_[0-9]+_[0-9]+\\..*$", "", basename(path))
+  group_id <- get_val("GroupID")
+
+  if (is.na(group_id) || group_id != expected_group_id) {
     warning(sprintf(
-      "skipping %s: Sample/Treatment/Type not constant within the file (export artifact?) -- flag for Zach",
-      basename(path)
+      "skipping %s: GroupID '%s' doesn't match the filename (expected '%s') -- export artifact?",
+      basename(path), group_id, expected_group_id
     ))
     return(NULL)
   }
 
-  w <- df$Volume / sum(df$Volume)
-  d <- df$um
-  mean_d <- sum(w * d)
-  var_d  <- sum(w * (d - mean_d)^2)
-  sd_d   <- sqrt(var_d)
+  parts <- str_split(group_id, "_")[[1]]
 
   tibble(
-    Sample    = df$Sample[1],
-    Treatment = df$Treatment[1],
-    Type      = df$Type[1],
-    Mean      = mean_d,
-    Variance  = var_d,
-    Skew      = sum(w * (d - mean_d)^3) / sd_d^3,
-    Kurtosis  = sum(w * (d - mean_d)^4) / sd_d^4
+    Sample    = paste(parts[1], parts[2], sep = "_"),
+    Treatment = parts[3],
+    Operator  = get_val("Operator"),
+    Mean      = as.numeric(get_stat("Mean")),
+    Variance  = as.numeric(get_stat("Variance")),
+    Skew      = as.numeric(get_stat("Skew")),
+    Kurtosis  = as.numeric(get_stat("Kurtosis")) + 3
   )
 }
 
 particle_moments <- map(file_list, read_particle_file) %>%
   compact() %>%
   bind_rows()
+
+# --- join growth form (not present in the raw export) ----------------------
+
+sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
+  select(Sample_ID, Type) %>%
+  distinct()
+
+particle_moments <- particle_moments %>%
+  left_join(sample_info, by = c("Sample" = "Sample_ID")) %>%
+  mutate(Treatment = recode(Treatment, BALL = "Ball", SIXT = "Fine", TWEN = "Twenty"))
 
 # --- average moments by growth form x milling treatment (per manuscript methods) ---
 
