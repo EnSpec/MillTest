@@ -37,6 +37,36 @@ same numbers used in the manuscript.
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | same script — 5 nm resampled, vector-normalized |
 | `BootstrappedData/` | **4.9G** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample bootstrap difference-spectrum draws. Large enough that including it raw is questionable; probably better to document the method + point to the code, unless EcoSIS's size limits are a non-issue. **Also currently stale** — predates the 2026-09-08 iteration-count/algorithm changes still awaiting Zach's confirmation; don't deposit until that's settled. |
 
+## Collected but not used in the manuscript — Henry wants these deposited anyway
+
+New 2026-09-14: Zach provided
+`field_data/mill_test_inventory_data_log.xlsx`, a 9-sheet measurement log.
+Two of those sheets are raw trait data collected per individual tree (not
+split per treatment) just to characterize the sample set overall — not
+read by any script in this repo or used in any manuscript analysis, but
+Henry wants them included in the EcoSIS release regardless.
+
+| Sheet | Size | What it is |
+|---|---|---|
+| `LMA` | 53 rows | Fresh/dry mass per Sample_ID, raw (not the treatment-split LMA the manuscript would need). |
+| `Chlorophyll` | 62 rows | Chl1-5 / CFR1-5 per Sample_ID, raw. |
+
+These are likely the source data behind the already-included aggregate
+`Water_Content` and `Chl1-5` columns in `field_data/sample_info.csv` (see
+`archive/README.md` under `Workflow_Traits/` — `Mill_Test_Analysis.R`,
+which produced `sample_info.csv`, was built from `LMA_data.csv` and
+`Chlorophyll.csv` among other inputs). Worth confirming whether these
+sheets *are* those source files (in which case sample_info.csv's
+provenance is now fully traceable) or a separate re-collection.
+
+The same workbook's `Sample Inventory` sheet (397 rows: Sampling_Date,
+Sample_ID, Type, Grinding Type, Grind_Date, Grind_Person, Spectra_Date,
+Spectra_Person) is the measurement log needed to validate the
+duplicate-spectral-scan handling in `SpectralPredictR.R` — see CLAUDE.md's
+2026-09-14 status entry. Not itself a deposit candidate (it's a lab
+logbook, not a trait measurement), but flagged here since it arrived in
+the same file.
+
 ## Needs resolution before deposit — currently placeholder or unverified
 
 | File | Size | Issue |
