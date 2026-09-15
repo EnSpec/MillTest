@@ -13,7 +13,7 @@ Sizes are approximate (`du -h`), current as of 2026-09-11.
 | `Mill24_RawSpec.csv` | 58M | Raw ASD spectra, all samples x treatments x replicates. The base of every spectral analysis in the manuscript. |
 | `field_data/sample_info.csv` | 10K | Canonical per-sample metadata: Sample_ID, Species_Code, Species, Type, coordinates, fresh/dry mass, water content, chlorophyll (Chl1-5), sampling date. |
 | `ChemResults/Brookside.csv` | 54K | Observed wet chemistry (N, Ca, K, P) from Brookside Labs — OD + 20-mesh material only. Ground truth for the RMSE/NRMSE comparison. |
-| `particle_size/data/full/**/*.csv` | 2.1M | LS 13320 particle-size-analyzer exports, one per sample x treatment (64 files covering the real 22-individual study set). Staged by Zach 2026-09-11. `MILL24_0005_SIXT_10_01.$ls.csv`'s known export artifact (Sample column incrementing instead of staying fixed) was hand-fixed by Henry 2026-09-15. **Currently blocked for deposit**: as of 2026-09-15 every file in `full/` (and its `distribution/<date>_Zach/` source) is in the raw Beckman Coulter LS instrument-export format, not the clean per-bin CSV format `ParticleStat.R` expects and that this folder held as of 2026-09-11 — likely reverted/re-staged by Zach sometime between then and now. Waiting on Zach to confirm and re-export correctly. |
+| `particle_size/data/full/**/*.csv` | 2.1M | LS 13320 particle-size-analyzer exports, one per sample x treatment (64 files covering the real 22-individual study set). **Resolved 2026-09-15**: the raw Beckman Coulter LS instrument-export format (metadata blocks + a `[SampleStats]` section with pre-computed moments) is the correct, intended format — matches what Zach's own script has always read via fixed row-slice indices; `ParticleStat.R` rewritten to parse it by label lookup instead. Two files (`MILL24_0002_SIXT...`, `MILL24_0014_BALL...`) have an internal `GroupID` that doesn't match their filename — confirmed with Zach this is a rename-after-export artifact (he renamed the output file rather than redo the ~10min measurement), not bad data; the script now trusts the filename and logs the mismatch as a `GroupID_mismatch` provenance column rather than excluding the file. All 64 files included; ready for deposit. |
 | `particle_size/data/distribution/Jun13/*.csv` | ~40K | Henry's two early single-treatment protocol-testing runs (MILL24_0031 buckthorn/OD-ball, MILL24_0065 white cedar/OD-sixty-mesh) — real data on real study individuals, just incomplete (1 of 3 treatments each) and not part of Zach's 22-individual campaign. **Excluded from the manuscript's particle-size analysis** (`ParticleStat.R` now reads only `data/full/`), **but include in the data release** — good data, just not usable for the treatment comparison. |
 
 Also consider whether the raw `DrySpec/{FreezeDried,OvenDried}/*.asd` files
@@ -77,21 +77,26 @@ the same file.
 |---|---|---|
 | `spectralpredictr/DryTraits_NM.csv` | 3.1M | **Still Henry's placeholder** — not produced by any script currently in the repo. Used by `Predicted_Trait_Analysis.R` only for the Sample_ID -> Type/Species/Species_Code lookup (not for trait values). Needs either a real regeneration path or confirmation that its current content is actually fine to publish as-is. NM = "New Mill", the rotary mill equipment actually used for the study (confirmed 2026-09-11). |
 
-## Out of scope for this manuscript — confirm before bundling
+## Not used by this manuscript's analyses, but included in the deposit anyway
 
-Collected, but not read by any script in this repo, and not part of the four
-analyses the manuscript describes (spectral difference, N/Ca trait
-prediction, Bayesian ANOVA, particle size):
+**Decided 2026-09-15 (Henry)**: include all of this alongside the trait +
+spectra data, even though none of it is read by any script in this repo or
+part of the four analyses the manuscript describes (spectral difference,
+N/Ca trait prediction, Bayesian ANOVA, particle size). Rationale: it's all
+associated data from the same sample collection, and this manuscript and
+the `chemistry-sample-handling` manuscript (which *does* use the isotope
+file directly, via `isotope_comparison_results.R` on the server) can both
+just cite the same shared EcoSIS release rather than splitting it across
+two deposits.
 
 - `ChemResults/Report - 13C15N - BIOCORE_05.26.26.xlsx` (67K) — isotope ratios
 - `ChemResults/Mill Test_{FF,OD}_TPC.xlsx` (591K + 593K) — TPC assay
 - `ChemResults/Ankom_Primary_Template_Zach_Mill{FF,OD}.xlsx` (13K + 13K) — fiber assay
 
-These may belong to a different project's deposit (the isotope file in
-particular is read directly by `chemistry-sample-handling`'s
-`isotope_comparison_results.R` on the server — see CLAUDE.md's server-layout
-notes). Confirm with Henry/Zach whether any of these should ride along with
-this deposit or stay with that project's own release.
+Henry: "we did a lot of this already in a different project" — there may be
+an existing template/precedent for structuring a combined multi-assay
+chemistry release worth reusing rather than figuring this out from scratch.
+Not yet identified which project/files that refers to.
 
 **Not needed at all** (confirmed 2026-09-11, not just "out of scope" — actively
 excluded): `spectralpredictr/DryTraits_OM.csv` and the
