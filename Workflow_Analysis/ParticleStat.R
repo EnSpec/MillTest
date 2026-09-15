@@ -76,32 +76,28 @@ read_particle_file <- function(path) {
   }
 
   # Filenames look like MILL24_0005_SIXT_10_01.$ls.csv; GroupID inside the
-  # file should be the "MILL24_0005_SIXT" prefix before the trailing run
-  # numbers. Found MILL24_0005_SIXT_10_01.$ls.csv with GroupID incrementing
-  # per row instead of matching the filename -- an export/copy-paste
-  # artifact (hand-fixed by Henry 2026-09-15). Flag and skip rather than
-  # silently trust a mismatched or missing GroupID.
+  # file is normally the same "MILL24_0005_SIXT" prefix, but the two can
+  # disagree -- confirmed with Zach 2026-09-15 that when a treatment
+  # export needed redoing, his workflow was to rename the output file
+  # rather than re-run the ~10-minute measurement, which leaves GroupID
+  # (baked into the file at export time) stale relative to the renamed
+  # file. The filename is the authoritative label in that case; GroupID is
+  # kept alongside purely as a provenance note, not used to exclude data.
   expected_group_id <- sub("_[0-9]+_[0-9]+\\..*$", "", basename(path))
   group_id <- get_val("GroupID")
 
-  if (is.na(group_id) || group_id != expected_group_id) {
-    warning(sprintf(
-      "skipping %s: GroupID '%s' doesn't match the filename (expected '%s') -- export artifact?",
-      basename(path), group_id, expected_group_id
-    ))
-    return(NULL)
-  }
-
-  parts <- str_split(group_id, "_")[[1]]
+  parts <- str_split(expected_group_id, "_")[[1]]
 
   tibble(
-    Sample    = paste(parts[1], parts[2], sep = "_"),
-    Treatment = parts[3],
-    Operator  = get_val("Operator"),
-    Mean      = as.numeric(get_stat("Mean")),
-    Variance  = as.numeric(get_stat("Variance")),
-    Skew      = as.numeric(get_stat("Skew")),
-    Kurtosis  = as.numeric(get_stat("Kurtosis")) + 3
+    Sample              = paste(parts[1], parts[2], sep = "_"),
+    Treatment           = parts[3],
+    Operator            = get_val("Operator"),
+    Mean                = as.numeric(get_stat("Mean")),
+    Variance            = as.numeric(get_stat("Variance")),
+    Skew                = as.numeric(get_stat("Skew")),
+    Kurtosis            = as.numeric(get_stat("Kurtosis")) + 3,
+    GroupID_in_file     = group_id,
+    GroupID_mismatch    = is.na(group_id) || group_id != expected_group_id
   )
 }
 
