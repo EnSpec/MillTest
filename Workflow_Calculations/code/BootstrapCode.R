@@ -27,7 +27,7 @@ spectraldata <- read.csv("Z:/projects/Mill24/Mill24_RawSpec.csv") %>%
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
-iteration = 999
+iteration = 1200
 
 for(sample in unique(spectraldata$SampleID)) {
 spectraldatasubset <- spectraldata %>% 
