@@ -33,15 +33,20 @@ spectraldata <- read.csv(file.path(data_root, "Mill24_RawSpec.csv")) %>%
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
-# FLAG (2026-09-15): Henry's recollection is that 999 is correct -- 1500
-# was from the earlier averaging-based Bias* chain (superseded, archived),
-# not this script, and the manuscript's stated 1200 was Zach's original
-# intended value but that run was never completed with the mean-of-6
-# procedure below before he cut it to 999 for runtime. Henry is
-# double-checking this directly with Zach before treating it as final --
-# do not re-run BootstrappedData/ or update the manuscript's iteration
-# count until confirmed.
-iteration = 999
+# RESOLVED (2026-09-15, Henry+Zach): the mean-of-6 procedure below (now
+# removed -- see the foreach block) was Zach's own addition, motivated by
+# wanting to smooth over the 6 spectral replicates per sample x treatment.
+# Confirmed the actual intended procedure is a single random-replicate-pair
+# draw per iteration, matching the manuscript methods text exactly ("a
+# random replicate was chosen from each treatment... iterated N times") --
+# no intermediate averaging. The old "1200"/"999" iteration counts were
+# each doing 6x that many underlying draws internally (1200 iterations x
+# 6 draws = 7200), so they don't directly carry over to this simpler,
+# ~6x-faster-per-iteration procedure. Henry: bumped to 5000 (up from the
+# manuscript's stated 1200) now that each iteration is much cheaper, to
+# preempt reviewer pushback on a low replicate count -- manuscript
+# methods text needs updating to 5000.
+iteration = 5000
 
 for(sample in unique(spectraldata$SampleID)) {
 spectraldatasubset <- spectraldata %>% 
@@ -60,24 +65,15 @@ output = list()
     treatment2 = spectraldatasubset %>% 
       filter(treatment == treatmentcombination[e, 2])
     
-    # FLAG (2026-09-15): Henry's recollection is that the `for(q in 1:6)`
-    # loop below -- mean of 6 random replicate-pair draws per iteration,
-    # rather than one single random-replicate-pair draw -- is the intended,
-    # final procedure, but he's confirming with Zach before treating this
-    # as settled (see the iteration= comment above for the fuller context).
-    # Manuscript methods text currently describes the single-draw version.
+    # Single random-replicate-pair draw per iteration -- one replicate
+    # sampled from treatment1, one from treatment2, subtracted. No
+    # intermediate averaging (see the iteration= comment above).
     distributiondf <- foreach(j = 1:iteration, .combine = rbind, .packages = "tidyverse") %dopar% {
-      bootstorage <-  intersect(treatment1[,3:ncol(treatment1)], treatment2[,3:ncol(treatment2)])
-      for(q in 1:6){
-        bootstorage <- rbind(bootstorage, treatment1[sample(1:nrow(treatment1), size = 1),4:ncol(treatment1)] - treatment2[sample(1:nrow(treatment2), size = 1),4:ncol(treatment2)])
-      }
-
-      bootstorage %>%
-        mutate(sample_name = sample) %>% 
-        mutate(treatment1 = treatmentcombination[e, 1]) %>% 
-        mutate(treatment2 = treatmentcombination[e, 2]) %>% 
-        group_by(sample_name, treatment1, treatment2) %>% 
-        summarize(across(everything(), mean, na.rm = TRUE))
+      (treatment1[sample(1:nrow(treatment1), size = 1), 4:ncol(treatment1)] -
+         treatment2[sample(1:nrow(treatment2), size = 1), 4:ncol(treatment2)]) %>%
+        mutate(sample_name = sample,
+               treatment1 = treatmentcombination[e, 1],
+               treatment2 = treatmentcombination[e, 2])
     }
   output[[e]] <- distributiondf
                     }
