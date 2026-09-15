@@ -1,9 +1,11 @@
 cff-version: 1.2.0
 message: >-
   If you use this software, please cite it using the metadata below. See also
-  the manuscript this code supports (citation TBD) and the companion
-  trait + spectra dataset on EcoSIS (DOI TBD).
-title: "MillTest: analysis code for the Mill Test 2024 milling/drying treatment comparison"
+  the manuscript this code supports, "Effects of drying and milling
+  treatments on estimates of foliar functional traits with VSWIR
+  spectroscopy" (full citation TBD), and the companion trait + spectra
+  dataset on EcoSIS (DOI TBD).
+title: "Analysis code for the effects of drying and milling treatments on estimates of foliar functional traits with VSWIR spectroscopy"
 type: software
 license: GPL-3.0
 repository-code: "https://github.com/EnSpec/MillTest"
