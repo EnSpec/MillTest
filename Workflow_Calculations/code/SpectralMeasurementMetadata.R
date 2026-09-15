@@ -76,13 +76,21 @@ inventory <- read_excel(
   col_names = c("Sampling_Date", "Sample_ID_num", "Type", "MillTreat",
                "Grind_Date", "Grind_Person", "Spectra_Date_inventory",
                "Spectra_Person", "Notes", "c10", "c11"),
-  col_types = c("text", "numeric", "text", "text", "text", "text",
-               "text", "text", "text", "text", "text")
+  # Grind_Date/Spectra_Date_inventory read as "numeric": these cells hold
+  # a plain YYYYMMDD integer (e.g. 20241230), not a native Excel date
+  # serial -- col_type "date" would (and did) misinterpret that integer AS
+  # a serial, giving nonsense dates (year 57318). "text" just stringifies
+  # the underlying double in scientific notation ("2.024123E7"). Numeric
+  # + manual %Y%m%d parsing is the only one of the three that's correct.
+  col_types = c("text", "numeric", "text", "text", "numeric", "text",
+               "numeric", "text", "text", "text", "text")
 ) %>%
   filter(!is.na(Sample_ID_num)) %>%
   mutate(
     SampleID = sprintf("MILL24_%04d", as.integer(Sample_ID_num)),
-    DryTreat = Type
+    DryTreat = Type,
+    Grind_Date             = format(as.Date(as.character(Grind_Date), format = "%Y%m%d"), "%Y-%m-%d"),
+    Spectra_Date_inventory = format(as.Date(as.character(Spectra_Date_inventory), format = "%Y%m%d"), "%Y-%m-%d")
   ) %>%
   select(SampleID, DryTreat, MillTreat, Grind_Date, Grind_Person,
         Spectra_Date_inventory, Spectra_Person, Notes)
