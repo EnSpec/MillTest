@@ -33,11 +33,14 @@ spectraldata <- read.csv(file.path(data_root, "Mill24_RawSpec.csv")) %>%
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
-# FLAG (2026-09-11): iteration count changed 1500 -> 999 in Zach's 2026-09-08
-# push (commit 379148f). The repo previously had 1500 (methods say 1200) --
-# this is now a third value. Confirm with Zach/Henry which iteration count is
-# intended before treating bootstrap output as final; unchanged here per
-# Henry's instruction to flag rather than pick a number ourselves.
+# FLAG (2026-09-15): Henry's recollection is that 999 is correct -- 1500
+# was from the earlier averaging-based Bias* chain (superseded, archived),
+# not this script, and the manuscript's stated 1200 was Zach's original
+# intended value but that run was never completed with the mean-of-6
+# procedure below before he cut it to 999 for runtime. Henry is
+# double-checking this directly with Zach before treating it as final --
+# do not re-run BootstrappedData/ or update the manuscript's iteration
+# count until confirmed.
 iteration = 999
 
 for(sample in unique(spectraldata$SampleID)) {
@@ -57,13 +60,12 @@ output = list()
     treatment2 = spectraldatasubset %>% 
       filter(treatment == treatmentcombination[e, 2])
     
-    # FLAG (2026-09-11): the `for(q in 1:6)` loop below + group_by/summarize is
-    # new in Zach's 2026-09-08 push. It changes the per-iteration draw from one
-    # random replicate-pair difference (what the methods describe: "one random
-    # replicate per treatment, difference, iterate") to the MEAN of 6 such
-    # draws per iteration. That's a different bootstrap procedure, not a bug
-    # fix -- confirm with Zach whether this was intentional before trusting
-    # this output for the manuscript figure/table.
+    # FLAG (2026-09-15): Henry's recollection is that the `for(q in 1:6)`
+    # loop below -- mean of 6 random replicate-pair draws per iteration,
+    # rather than one single random-replicate-pair draw -- is the intended,
+    # final procedure, but he's confirming with Zach before treating this
+    # as settled (see the iteration= comment above for the fuller context).
+    # Manuscript methods text currently describes the single-draw version.
     distributiondf <- foreach(j = 1:iteration, .combine = rbind, .packages = "tidyverse") %dopar% {
       bootstorage <-  intersect(treatment1[,3:ncol(treatment1)], treatment2[,3:ncol(treatment2)])
       for(q in 1:6){
