@@ -36,7 +36,7 @@ same numbers used in the manuscript.
 | `spectralpredictr/SpectralPredictR_raw_spectra.csv` | 49M | same script — jump-corrected spectra, pre-normalization |
 | `spectralpredictr/SpectralPredictR_VN_jumpcorrected_spectra.csv` | 93M | same script — `spectrolab::normalize()` output. **Not actually used downstream within SpectralPredictR.R itself** (see CLAUDE.md FLAG), but `DataJoin.R` reads it. |
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | same script — 5 nm resampled, vector-normalized |
-| `BootstrappedData/` | **4.9G** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample bootstrap difference-spectrum draws. Large enough that including it raw is questionable; probably better to document the method + point to the code, unless EcoSIS's size limits are a non-issue. **Also currently stale** — predates the 2026-09-08 iteration-count/algorithm changes still awaiting Zach's confirmation; don't deposit until that's settled. |
+| `BootstrappedData/` | **169M** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
 
 ## Collected but not used in the manuscript — Henry wants these deposited anyway
 
