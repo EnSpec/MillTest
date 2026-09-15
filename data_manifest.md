@@ -52,13 +52,16 @@ Henry wants them included in the EcoSIS release regardless.
 | `LMA` | 53 rows | Fresh/dry mass per Sample_ID, raw (not the treatment-split LMA the manuscript would need). |
 | `Chlorophyll` | 62 rows | Chl1-5 / CFR1-5 per Sample_ID, raw. |
 
-These are likely the source data behind the already-included aggregate
-`Water_Content` and `Chl1-5` columns in `field_data/sample_info.csv` (see
-`archive/README.md` under `Workflow_Traits/` — `Mill_Test_Analysis.R`,
-which produced `sample_info.csv`, was built from `LMA_data.csv` and
-`Chlorophyll.csv` among other inputs). Worth confirming whether these
-sheets *are* those source files (in which case sample_info.csv's
-provenance is now fully traceable) or a separate re-collection.
+**Confirmed 2026-09-15 (Henry)**: these sheets are the same underlying
+measurements aggregated into `field_data/sample_info.csv`'s `Water_Content`
+and `Chl1-5` columns (see `archive/README.md` under `Workflow_Traits/` —
+`Mill_Test_Analysis.R`, which produced `sample_info.csv`, was built from
+`LMA_data.csv` and `Chlorophyll.csv` among other inputs) — the inventory
+version just carries some extra metadata beyond what made it into the
+aggregate. `sample_info.csv`'s provenance is now fully traceable. Still to
+do: actually stage these two sheets as their own deposit files (not just
+reference them here) once the EcoSIS metadata alignment pass (see
+CLAUDE.md) is further along.
 
 The same workbook's `Sample Inventory` sheet (397 rows: Sampling_Date,
 Sample_ID, Type, Grinding Type, Grind_Date, Grind_Person, Spectra_Date,
