@@ -33,7 +33,17 @@ data_root <- Sys.getenv("MILL24_DATA_ROOT",
 out_dir <- file.path(data_root, "derived", "particle_size")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-csvfolder <- file.path(data_root, "particle_size", "data")
+# particle_size/data/full/ is Zach's consolidated, de-duplicated copy of the
+# real 22-individual x 3-treatment dataset (verified 2026-09-15: identical by
+# filename and MD5 to the union of his dated distribution/<date>_Zach/
+# subfolders). Read from full/ specifically, not particle_size/data/ itself --
+# the dated subfolders under distribution/ are pre-consolidation duplicates of
+# the same files, and distribution/Jun13/ holds two incomplete single-treatment
+# pilot runs (Henry, protocol testing, pre-dates Zach's real campaign) for
+# samples not otherwise in the 22-individual set. Reading the parent
+# recursively would silently double-count every real sample and pull in the
+# pilot files.
+csvfolder <- file.path(data_root, "particle_size", "data", "full")
 file_list <- list.files(csvfolder, pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 
 read_particle_file <- function(path) {
