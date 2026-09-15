@@ -21,7 +21,9 @@
 #  that was never the manuscript's model; every brms run in this repo before
 #  today used it by mistake. This also resolves the individual-vs-measurement
 #  random-effect SD mismatch flagged against the methods text since 09-07 --
-#  it was a missing model term, not a methods-text imprecision.)
+#  it was a missing model term, not a methods-text imprecision. Both models
+#  hit the default max_treedepth = 10 hard on the first corrected run --
+#  Rhat/ESS were still clean, but bumped to 12 to clear the warning.)
 ########################################################
 
 library(tidyverse)
@@ -94,7 +96,8 @@ fit_trait <- function(response) {
     prior   = trt_prior,
     seed    = 112,
     chains  = 4, cores = 4,
-    iter    = 20000, warmup = 5000
+    iter    = 20000, warmup = 5000,
+    control = list(max_treedepth = 12)
   )
 }
 
