@@ -12,16 +12,16 @@ authors:
     given-names: Henry
     affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
     email: hfrye2@wisc.edu
-    # orcid: TODO — Henry to add
+    orcid: "https://orcid.org/0000-0002-2066-5742"
   - family-names: Breuer
     given-names: Zach
     affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
     email: zbreuer@wisc.edu
-    # orcid: TODO — encourage Zach to create one
+    orcid: "https://orcid.org/0009-0002-7252-2716"
   - family-names: Majerus
     given-names: Annabelle
     affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
-    # orcid: TODO — encourage Annabelle to create one
+    orcid: "https://orcid.org/0009-0006-6432-0232"
 references:
   - type: software
     title: SpectralPredictR
