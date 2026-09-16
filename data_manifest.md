@@ -40,6 +40,28 @@ same numbers used in the manuscript.
 
 ## Collected but not used in the manuscript — Henry wants these deposited anyway
 
+**New 2026-09-16**: `Mill24_RawSpec.csv` / `DrySpec/` / `BootstrappedData/`
+carry 66 samples, not the manuscript's 61. 5 are out of the manuscript's
+scope, confirmed with Henry:
+- `MILL24_0003`, `MILL24_0004` (Type=Forb, American pokeweed) and
+  `MILL24_0038`, `MILL24_0039` (Type=Graminoid, yellow foxtail) — from an
+  early attempt to add herbaceous growth-form categories to the study
+  design that was dropped as too resource-intensive. Real, good spectral
+  data on real samples — include in the EcoSIS deposit, excluded from the
+  manuscript's spectral-difference analysis (`Table1_SpectralDifferenceRegions.R`
+  / `SpectralDifferenceCurves.R` now restrict to Type %in%
+  c("Broadleaf","Conifer")).
+- `MILL24_0015` (Species_Code=GLTR, honey locust) — a mis-identified
+  *Robinia pseudoacacia* replacement collection, not a real 7th broadleaf
+  species; already excluded from the Bayesian ANOVA in
+  `Predicted_Trait_Analysis.R` (`Species_Code != "GLTR"`), now also
+  excluded from the spectral-difference scripts for the same reason. Real
+  data (it's a real leaf sample, just not part of the intended 11-species
+  design) — include in the deposit.
+
+None of these 5 have Brookside wet-chemistry data, so the RMSE/NRMSE
+pipeline was never at risk of including them.
+
 New 2026-09-14: Zach provided
 `field_data/mill_test_inventory_data_log.xlsx`, a 9-sheet measurement log.
 Two of those sheets are raw trait data collected per individual tree (not
