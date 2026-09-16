@@ -23,7 +23,13 @@ authors:
   - family-names: Majerus
     given-names: Annabelle
     affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
+    email: aemajerus@crimson.ua.edu
     orcid: "https://orcid.org/0009-0006-6432-0232"
+  - family-names: Townsend
+    given-names: Philip A.
+    affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
+    email: ptownsend@wisc.edu
+    orcid: "https://orcid.org/0000-0001-7003-8774"
 references:
   - type: software
     title: SpectralPredictR
