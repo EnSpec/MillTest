@@ -23,8 +23,24 @@ out_dir  <- file.path(data_root, "derived", "spectral_difference")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
-  select(Sample_ID, Type) %>%
+  select(Sample_ID, Species_Code, Type) %>%
   distinct()
+
+# The spectral dataset behind BootstrappedData/ carries 66 samples, more
+# than the manuscript's 61-individual/11-species design: 2 Forb (pokeweed)
+# + 2 Graminoid (yellow foxtail) samples from an early attempt to add
+# herbaceous growth-form categories that was dropped as out of scope for
+# this study's resources (Henry, 2026-09-16) -- real, good data, worth
+# including in the EcoSIS deposit, but not part of this manuscript's
+# analysis population. Also 1 extra Broadleaf individual, GLTR (honey
+# locust) -- a 7th species not named anywhere in the manuscript's Sample
+# Collection text, already excluded from the Bayesian ANOVA in
+# Predicted_Trait_Analysis.R (`Species_Code != 'GLTR'`); excluded here too
+# for the same reason (Henry, 2026-09-16), so Table 1's population is
+# exactly the 61 individuals / 11 species the manuscript describes.
+design_ids <- sample_info %>%
+  filter(Type %in% c("Broadleaf", "Conifer"), Species_Code != "GLTR") %>%
+  pull(Sample_ID)
 
 # --- spectral regions (per manuscript Table 1) ------------------------------
 
@@ -90,6 +106,12 @@ if (any(is.na(per_sample_region$Type))) {
                   sum(is.na(per_sample_region$Type))))
 }
 
+n_before <- n_distinct(per_sample_region$Sample_ID)
+per_sample_region <- per_sample_region %>% filter(Sample_ID %in% design_ids)
+n_after <- n_distinct(per_sample_region$Sample_ID)
+cat(sprintf("Restricted to the 61-individual design population: %d -> %d samples (dropped GLTR + Forb + Graminoid)\n",
+           n_before, n_after))
+
 # --- aggregate: All Data / Broadleaf / Conifer, for each comparison x region
 
 summarise_group <- function(df, group_label) {
@@ -102,19 +124,13 @@ summarise_group <- function(df, group_label) {
 broadleaf_summary <- summarise_group(filter(per_sample_region, Type == "Broadleaf"), "Broadleaved")
 conifer_summary   <- summarise_group(filter(per_sample_region, Type == "Conifer"), "Needle-Leaved")
 
-# "All Data" is the unweighted average of the two growth-form means, not a
-# flat pool of every sample -- confirmed against Zach's original hand-typed
-# table (Nov 2025): pooling all samples directly (unequal Broadleaf/Conifer
-# n) gives values consistently ~5-10% higher than his "All Data" column,
-# while (Broadleaved + Needle-Leaved)/2 reproduces it almost exactly. This
-# matches the growth-form-balanced averaging already used for particle size
-# (ParticleStat.R).
-all_data_summary <- broadleaf_summary %>%
-  rename(BL = Value) %>%
-  left_join(conifer_summary %>% rename(NL = Value) %>% select(-Group),
-            by = c("Comparison", "Region")) %>%
-  mutate(Value = (BL + NL) / 2, Group = "All Data") %>%
-  select(Comparison, Region, Value, Group)
+# "All Data" is a flat pool of every design-population sample (per-sample
+# equal weighting, not per-growth-form equal weighting) -- Henry's call,
+# 2026-09-16: Zach's original hand-typed table instead used the unweighted
+# average of the two growth-form means, which isn't representative when the
+# two groups have unequal n and isn't a convention stated anywhere in the
+# manuscript.
+all_data_summary <- summarise_group(per_sample_region, "All Data")
 
 table1_long <- bind_rows(all_data_summary, broadleaf_summary, conifer_summary) %>%
   mutate(
