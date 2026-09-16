@@ -4,235 +4,212 @@
 #
 # Project: Mill Test 2024
 #
-# Date: 8/24/2025
+# Date: 8/24/2025 (paths de-hard-coded, RMSE denominator and stale plot
+#        annotations fixed, deprecated facet labeller replaced -- 2026)
 #
 # Authors: Zach Breuer, Mill Test Team
+#
+# Observed (Brookside wet chemistry, oven-dried + 20-mesh material only) vs.
+# spectrally predicted nitrogen and calcium, by drying x milling treatment:
+# per-treatment linear fits, RMSE / NRMSE, and a variance-partitioning analysis.
 #
 ########################################
 
 library(tidyverse)
-library(ggpmisc)
 library(cowplot)
 library(vegan)
-setwd("C:/Mill24/data/Elements")
 
-# Load in necessary dataset
+# --- data location (see README) --------------------------------------------
+data_root <- Sys.getenv("MILL24_DATA_ROOT",
+                        unset = "/Volumes/Enspec/projects/Mill24")
 
-PredictedChem <- read.csv("Z:/projects/Mill24/ChemResults/DryTraits_NEONModel.csv")
-ObservedChem <- read.csv("Z:/projects/Mill24/ChemResults/Brookside.csv")
+out_dir <- file.path(data_root, "derived", "chemistry")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Sort, filter, and join datasets
+# --- inputs ---------------------------------------------------------------
 
-PredictedChem <- PredictedChem %>% 
-  mutate(sample_name = sampledata_head) %>% 
-  select(sample_name,
-         t_mean_Nitrogen, 
-         t_mean_Potassium,
-         t_mean_Phosphorus,
-         t_mean_Calcium) %>% 
-  mutate(treatment = substring(sample_name, 1, 19)) %>% 
-  group_by(treatment) %>% 
-  summarize(PredictedNitrogen = mean(t_mean_Nitrogen),
-            PredictedPotassium = mean(t_mean_Potassium),
-            PredictedPhosphorus = mean(t_mean_Phosphorus),
-            PredictedCalcium = mean(t_mean_Calcium)) %>% 
-  mutate(Sample_ID = substring(treatment, 1, 11)) %>% 
+# The original script read "ChemResults/DryTraits_NEONModel.csv" here, but the
+# file of that name on the server has no `sampledata_head` column and no
+# calcium prediction. Confirmed 2026-09-11: DimensionsDryTraitPredictions.csv
+# is the right file -- it's the actual output of Workflow_Calculations/code/
+# SpectralPredictR.R (run against real DrySpec/ data that day), not a
+# placeholder anymore.
+predicted_file <- file.path(data_root, "spectralpredictr",
+                            "DimensionsDryTraitPredictions.csv")
+
+PredictedChem <- read.csv(predicted_file)
+
+# Brookside.csv carries a UTF-8 BOM on the first header cell; without
+# fileEncoding the first column name is mangled and the select() below fails.
+ObservedChem <- read.csv(file.path(data_root, "ChemResults", "Brookside.csv"),
+                         fileEncoding = "UTF-8-BOM")
+
+# --- predicted: mean per sample x treatment ------------------------------
+
+PredictedChem <- PredictedChem %>%
+  mutate(treatment = substring(sampledata_head, 1, 19)) %>%
+  group_by(treatment) %>%
+  summarise(across(c(t_mean_Nitrogen, t_mean_Potassium,
+                     t_mean_Phosphorus, t_mean_Calcium),
+                   \(x) mean(x, na.rm = TRUE)),
+            .groups = "drop") %>%
+  rename(PredictedNitrogen   = t_mean_Nitrogen,
+         PredictedPotassium  = t_mean_Potassium,
+         PredictedPhosphorus = t_mean_Phosphorus,
+         PredictedCalcium    = t_mean_Calcium) %>%
+  mutate(Sample_ID = substring(treatment, 1, 11)) %>%
   rename(sample_name = treatment)
 
-ObservedChem <- ObservedChem %>% 
+# --- observed: one Brookside assay per sample ---------------------------
+
+ObservedChem <- ObservedChem %>%
   select(Sample_ID,
-         Nitrogen,
-         Potassium,
-         Phosphorous,
-         Calcium) %>% 
-  rename(ObservedNitrogen = Nitrogen,
-         ObservedPotassium = Potassium,
+         ObservedNitrogen   = Nitrogen,
+         ObservedPotassium  = Potassium,
          ObservedPhosphorus = Phosphorous,
-         ObservedCalcium = Calcium)
-Chemistry <- left_join(PredictedChem, ObservedChem, join_by("Sample_ID"))
+         ObservedCalcium    = Calcium) %>%
+  mutate(across(starts_with("Observed"), \(x) as.numeric(as.character(x))))
 
-Chemistry <- Chemistry %>% 
-  filter(!is.na(ObservedPhosphorus))
-Chemistry$ObservedNitrogen <- as.numeric(as.character(Chemistry$ObservedNitrogen))
-Chemistry$ObservedPotassium <- as.numeric(as.character(Chemistry$ObservedPotassium))
-Chemistry$ObservedPhosphorus <- as.numeric(as.character(Chemistry$ObservedPhosphorus))
-Chemistry$ObservedCalcium <- as.numeric(as.character(Chemistry$ObservedCalcium))
+# --- join: every treatment's prediction against the single assayed value --
 
-# Add columns containing treatment information and convert units of traits
+Chemistry <- PredictedChem %>%
+  left_join(ObservedChem, join_by(Sample_ID)) %>%
+  filter(!is.na(ObservedPhosphorus)) %>%
+  mutate(DryingTreatment  = substring(sample_name, 13, 14),   # OD / FF
+         MillingTreatment = substring(sample_name, 16, 19),   # TWEN / BALL / SIXT
+         # Brookside reports % dry mass; x10 -> mg/g to match the predictions
+         ObservedCalcium  = ObservedCalcium  * 10,
+         ObservedNitrogen = ObservedNitrogen * 10)
 
-Chemistry <- Chemistry %>% 
-  mutate(DryingTreatment = substring(sample_name, 13, 14)) %>% 
-  mutate(MillingTreatment = substring(sample_name, 16, 19)) %>% 
-  mutate(ObservedCalcium = ObservedCalcium * 10) %>% 
-  mutate(ObservedNitrogen = ObservedNitrogen * 10)
+# --- per-treatment linear fits: observed ~ predicted --------------------
 
-
-# Create linear models comparing observed and predicted calcium values for all treatments
-
-NEONCalciumODTWEN <- lm(ObservedCalcium ~ PredictedCalcium, Chemistry, subset = (DryingTreatment == "OD" & MillingTreatment == "TWEN"))
-NEONCalciumFFTWEN <- lm(ObservedCalcium ~ PredictedCalcium, Chemistry, subset = (DryingTreatment == "FF" & MillingTreatment == "TWEN"))
-NEONCalciumODBALL <- lm(ObservedCalcium ~ PredictedCalcium, Chemistry, subset = (DryingTreatment == "OD" & MillingTreatment == "BALL"))
-NEONCalciumFFBALL <- lm(ObservedCalcium ~ PredictedCalcium, Chemistry, subset = (DryingTreatment == "FF" & MillingTreatment == "BALL"))
-NEONCalciumODSIXT <- lm(ObservedCalcium ~ PredictedCalcium, Chemistry, subset = (DryingTreatment == "OD" & MillingTreatment == "SIXT"))
-NEONCalciumFFSIXT <- lm(ObservedCalcium ~ PredictedCalcium, Chemistry, subset = (DryingTreatment == "FF" & MillingTreatment == "SIXT"))
-
-summary(NEONCalciumODTWEN)
-summary(NEONCalciumFFTWEN)
-summary(NEONCalciumODBALL)
-summary(NEONCalciumFFBALL)
-summary(NEONCalciumODSIXT)
-summary(NEONCalciumFFSIXT)
-
-# Create linear models for observed and predicted nitrogen values for all treatments
-
-NEONNitrogenODTWEN <- lm(ObservedNitrogen ~ PredictedNitrogen, Chemistry, subset = (DryingTreatment == "OD" & MillingTreatment == "TWEN"))
-NEONNitrogenFFTWEN <- lm(ObservedNitrogen ~ PredictedNitrogen, Chemistry, subset = (DryingTreatment == "FF" & MillingTreatment == "TWEN"))
-NEONNitrogenODBALL <- lm(ObservedNitrogen ~ PredictedNitrogen, Chemistry, subset = (DryingTreatment == "OD" & MillingTreatment == "BALL"))
-NEONNitrogenFFBALL <- lm(ObservedNitrogen ~ PredictedNitrogen, Chemistry, subset = (DryingTreatment == "FF" & MillingTreatment == "BALL"))
-NEONNitrogenODSIXT <- lm(ObservedNitrogen ~ PredictedNitrogen, Chemistry, subset = (DryingTreatment == "OD" & MillingTreatment == "SIXT"))
-NEONNitrogenFFSIXT <- lm(ObservedNitrogen ~ PredictedNitrogen, Chemistry, subset = (DryingTreatment == "FF" & MillingTreatment == "SIXT"))
-
-summary(NEONNitrogenODTWEN)
-summary(NEONNitrogenFFTWEN)
-summary(NEONNitrogenODBALL)
-summary(NEONNitrogenFFBALL)
-summary(NEONNitrogenODSIXT)
-summary(NEONNitrogenFFSIXT)
-
-# Calculate normalized RMSE values for all linear models
-
-ChemistryNRMSE <- Chemistry %>% 
-  mutate(sqerrorN = (PredictedNitrogen - ObservedNitrogen)^2,
-         sqerrorCa = (PredictedCalcium - ObservedCalcium)^2)
-
-RMSEODTWENN <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "TWEN" & DryingTreatment == "OD")$sqerrorN) / 60)
-RMSEODSIXTN <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "SIXT" & DryingTreatment == "OD")$sqerrorN) / 60)
-RMSEODBALLN <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "BALL" & DryingTreatment == "OD")$sqerrorN) / 60)
-RMSEFFTWENN <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "TWEN" & DryingTreatment == "FF")$sqerrorN) / 60)
-RMSEFFSIXTN <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "SIXT" & DryingTreatment == "FF")$sqerrorN) / 60)
-RMSEFFBALLN <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "BALL" & DryingTreatment == "FF")$sqerrorN) / 60)
-
-RMSEODTWENCa <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "TWEN" & DryingTreatment == "OD")$sqerrorCa) / 60)
-RMSEODSIXTCa <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "SIXT" & DryingTreatment == "OD")$sqerrorCa) / 60)
-RMSEODBALLCa <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "BALL" & DryingTreatment == "OD")$sqerrorCa) / 60)
-RMSEFFTWENCa <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "TWEN" & DryingTreatment == "FF")$sqerrorCa) / 60)
-RMSEFFSIXTCa <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "SIXT" & DryingTreatment == "FF")$sqerrorCa) / 60)
-RMSEFFBALLCa <- sqrt(sum(subset(ChemistryNRMSE, MillingTreatment == "BALL" & DryingTreatment == "FF")$sqerrorCa) / 60)
-
-ObservedChem <- ObservedChem %>% 
-  filter(grepl("MILL24", Sample_ID))
-
-ObservedChem$ObservedNitrogen <- as.numeric(as.character(ObservedChem$ObservedNitrogen))
-ObservedChem$ObservedCalcium <- as.numeric(as.character(ObservedChem$ObservedCalcium))
-
-NTWENRange <- max(subset(ChemistryNRMSE, MillingTreatment == "TWEN")$ObservedNitrogen) - min(subset(ChemistryNRMSE, MillingTreatment == "TWEN")$ObservedNitrogen)
-NBALLRange <- max(subset(ChemistryNRMSE, MillingTreatment == "BALL")$ObservedNitrogen) - min(subset(ChemistryNRMSE, MillingTreatment == "BALL")$ObservedNitrogen)
-NSIXTRange <- max(subset(ChemistryNRMSE, MillingTreatment == "SIXT")$ObservedNitrogen) - min(subset(ChemistryNRMSE, MillingTreatment == "SIXT")$ObservedNitrogen)
-
-CaTWENRange <- max(subset(ChemistryNRMSE, MillingTreatment == "TWEN")$ObservedCalcium) - min(subset(ChemistryNRMSE, MillingTreatment == "TWEN")$ObservedCalcium)
-CaBALLRange <- max(subset(ChemistryNRMSE, MillingTreatment == "BALL")$ObservedCalcium) - min(subset(ChemistryNRMSE, MillingTreatment == "BALL")$ObservedCalcium)
-CaSIXTRange <- max(subset(ChemistryNRMSE, MillingTreatment == "SIXT")$ObservedCalcium) - min(subset(ChemistryNRMSE, MillingTreatment == "SIXT")$ObservedCalcium)
-
-
-NRMSEODTWENN <- RMSEODTWENN / NTWENRange
-NRMSEODSIXTN <- RMSEODSIXTN / NSIXTRange
-NRMSEODBALLN <- RMSEODBALLN / NBALLRange
-NRMSEFFTWENN <- RMSEFFTWENN / NTWENRange
-NRMSEFFSIXTN <- RMSEFFSIXTN / NSIXTRange
-NRMSEFFBALLN <- RMSEFFBALLN / NBALLRange
-
-NRMSEODTWENCa <- RMSEODTWENCa / CaTWENRange
-NRMSEODSIXTCa <- RMSEODSIXTCa / CaSIXTRange
-NRMSEODBALLCa <- RMSEODBALLCa / CaBALLRange
-NRMSEFFTWENCa <- RMSEFFTWENCa / CaTWENRange
-NRMSEFFSIXTCa <- RMSEFFSIXTCa / CaSIXTRange
-NRMSEFFBALLCa <- RMSEFFBALLCa / CaBALLRange
-
-# Create plot for nitrogen comparison
-
-mill_list = c(
-  "BALL" = "Ball Milled",
-  "SIXT" = "Fine Mesh Milled",
-  "TWEN" = "Twenty Mesh Milled"
-)
-
-mill_labeller = function(variable, value) {
-  return(mill_list[value])
+fit_by_treatment <- function(trait) {
+  obs  <- paste0("Observed",  trait)
+  pred <- paste0("Predicted", trait)
+  Chemistry %>%
+    group_by(DryingTreatment, MillingTreatment) %>%
+    group_map(~ {
+      m <- lm(reformulate(pred, obs), data = .x)
+      cat("\n== ", trait, " ", .y$DryingTreatment, .y$MillingTreatment, " ==\n", sep = "")
+      print(summary(m))
+      m
+    })
 }
 
-RMSEText = data.frame(Trait = c("Nitrogen", "Nitrogen", "Nitrogen", "Calcium", "Calcium", "Calcium"),
-                      DryingTreatment = c("OD", "OD", "OD", "OD", "OD", "OD"),
-                      MillingTreatment = c("TWEN", "BALL", "SIXT", "TWEN", "BALL", "SIXT"),
-                      Text = c("RMSE\nOD: 4.7283\nFF: 2.5155\nNRMSE\nOD: 0.1587\nFF: 0.08441",
-                               "RMSE\nOD: 3.6028\nFF: 2.3976\nNRMSE\nOD: 0.1209\nFF: 0.08046",
-                               "RMSE\nOD: 3.3014\nFF: 3.2074\nNRMSE\nOD: 0.1108\nFF: 0.1076",
-                               "RMSE\nOD: 11.1227\nFF: 8.4293\nNRMSE\nOD: 0.1375\nFF: 0.1042",
-                               "RMSE\nOD: 10.6364\nFF: 8.0178\nNRMSE\nOD: 0.1315\nFF: 0.0991",
-                               "RMSE\nOD: 10.8417\nFF: 7.3402\nNRMSE\nOD: 0.1340\nFF: 0.0907"))
+calcium_fits  <- fit_by_treatment("Calcium")
+nitrogen_fits <- fit_by_treatment("Nitrogen")
 
+# --- RMSE and normalized RMSE by trait x drying x milling --------------
+# RMSE  = sqrt(mean squared error) over the samples in that treatment cell
+# NRMSE = RMSE / (range of observed values within that milling treatment)
 
-NEONNitrogenPlot <- ggplot(Chemistry, aes(x = PredictedNitrogen, y = ObservedNitrogen, color = DryingTreatment)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  geom_abline(slope = 1, intercept = 0, lwd = 1, linetype = "dashed") +
-  scale_color_manual(values = c("#7AC5CD", "#d73027")) +
-  geom_text(data = subset(RMSEText, Trait == "Nitrogen"), aes(label = Text), x = 8, y = 32, size = 2.5, inherit.aes = FALSE, hjust = 0) +
-  facet_wrap(~MillingTreatment, labeller = mill_labeller) +
-  xlab("Predicted Nitrogen") +
-  ylab("Observed Nitrogen") +
-  theme_bw() +
-  labs(color = "Drying Treatment")
+sq_err <- Chemistry %>%
+  transmute(DryingTreatment, MillingTreatment,
+            Nitrogen = (PredictedNitrogen - ObservedNitrogen)^2,
+            Calcium  = (PredictedCalcium  - ObservedCalcium)^2) %>%
+  pivot_longer(c(Nitrogen, Calcium), names_to = "Trait", values_to = "sq_err")
 
-NEONNitrogenPlot
+obs_range <- Chemistry %>%
+  transmute(MillingTreatment,
+            Nitrogen = ObservedNitrogen, Calcium = ObservedCalcium) %>%
+  pivot_longer(c(Nitrogen, Calcium), names_to = "Trait", values_to = "obs") %>%
+  group_by(Trait, MillingTreatment) %>%
+  summarise(obs_range = max(obs, na.rm = TRUE) - min(obs, na.rm = TRUE),
+            .groups = "drop")
 
-ggsave("NEONNitrogen.png", NEONNitrogenPlot, dpi = 320, scale = 2, width = 5, height = 1.875)
+rmse_tbl <- sq_err %>%
+  group_by(Trait, DryingTreatment, MillingTreatment) %>%
+  summarise(n    = sum(!is.na(sq_err)),
+            RMSE = sqrt(mean(sq_err, na.rm = TRUE)),
+            .groups = "drop") %>%
+  left_join(obs_range, join_by(Trait, MillingTreatment)) %>%
+  mutate(NRMSE = RMSE / obs_range)
 
-# Create plot for calcium comparison
+print(rmse_tbl)
+write.csv(rmse_tbl, file.path(out_dir, "rmse_nrmse_by_treatment.csv"),
+          row.names = FALSE)
 
-NEONCalciumPlot <- ggplot(Chemistry, aes(x = PredictedCalcium, y = ObservedCalcium, color = DryingTreatment)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  geom_abline(slope = 1, intercept = 0, lwd = 1, linetype = "dashed") +
-  scale_color_manual(values = c("#7AC5CD", "#d73027")) +
-  geom_text(data = subset(RMSEText, Trait == "Calcium"), aes(label = Text), x = -5.5, y = 61.5, inherit.aes = FALSE, size = 2.5, hjust = 0) +
-  facet_wrap(~MillingTreatment, labeller = mill_labeller) +
-  theme_bw() +
-  xlab("Predicted Calcium") +
-  ylab("Observed Calcium") +
-  labs(color = "Drying Treatment")
-NEONCalciumPlot
+# --- observed vs predicted plots --------------------------------------
 
-ggsave("NEONCalcium.png", NEONCalciumPlot, dpi = 320, scale = 2, width = 5, height = 1.875)
+mill_list <- c(BALL = "Ball Milled",
+               SIXT = "Fine Mesh Milled",
+               TWEN = "Twenty Mesh Milled")
 
-# Create plot grid for chemistry
+# One annotation block per milling facet, built from the values computed above.
+RMSEText <- rmse_tbl %>%
+  select(Trait, DryingTreatment, MillingTreatment, RMSE, NRMSE) %>%
+  pivot_wider(names_from = DryingTreatment, values_from = c(RMSE, NRMSE)) %>%
+  mutate(Text = sprintf("RMSE\nOD: %.4g\nFF: %.4g\nNRMSE\nOD: %.4g\nFF: %.4g",
+                        RMSE_OD, RMSE_FF, NRMSE_OD, NRMSE_FF)) %>%
+  select(Trait, MillingTreatment, Text)
 
-ObsvsPredPlotGrid <- plot_grid(NEONNitrogenPlot, NEONCalciumPlot, cols = 1, labels = c("A", "B"))
-ObsvsPredPlotGrid
+obs_pred_plot <- function(trait, text_x, text_y) {
+  pred <- paste0("Predicted", trait)
+  obs  <- paste0("Observed",  trait)
+  ggplot(Chemistry, aes(x = .data[[pred]], y = .data[[obs]],
+                        color = DryingTreatment)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, formula = y ~ x) +
+    geom_abline(slope = 1, intercept = 0, lwd = 1, linetype = "dashed") +
+    scale_color_manual(values = c(FF = "#7AC5CD", OD = "#d73027")) +
+    geom_text(data = filter(RMSEText, Trait == trait),
+              aes(label = Text), x = text_x, y = text_y,
+              size = 2.5, hjust = 0, inherit.aes = FALSE) +
+    facet_wrap(~MillingTreatment, labeller = as_labeller(mill_list)) +
+    labs(x = paste("Predicted", trait), y = paste("Observed", trait),
+         color = "Drying Treatment") +
+    theme_bw()
+}
 
-ggsave("ChemPlotGrid.png", ObsvsPredPlotGrid, dpi = 320, scale = 2, width = 5, height = 2.75)
+# text_x / text_y are hand-placed in data units for each panel
+NEONNitrogenPlot <- obs_pred_plot("Nitrogen", text_x = 8,    text_y = 32)
+NEONCalciumPlot  <- obs_pred_plot("Calcium",  text_x = -5.5, text_y = 61.5)
 
-################################# Variance Partitioning Analysis #################################################
+ggsave(file.path(out_dir, "NEONNitrogen.png"), NEONNitrogenPlot,
+       dpi = 320, scale = 2, width = 5, height = 1.875)
+ggsave(file.path(out_dir, "NEONCalcium.png"), NEONCalciumPlot,
+       dpi = 320, scale = 2, width = 5, height = 1.875)
 
-# Load in sample information and join with chemistry data
+ObsvsPredPlotGrid <- plot_grid(NEONNitrogenPlot, NEONCalciumPlot,
+                               ncol = 1, labels = c("A", "B"))
+ggsave(file.path(out_dir, "ChemPlotGrid.png"), ObsvsPredPlotGrid,
+       dpi = 320, scale = 2, width = 5, height = 2.75)
+
+# --- variance partitioning -------------------------------------------------
+# NOTE: late manuscript addition, little reviewed. Species_Code and Type are
+# collinear (Type is fixed by species), so varpart() reports "results are
+# probably incorrect". Planned fix (Henry): run the partition separately within
+# each Type (Broadleaf, Conifer) and drop Type as a table. Left as-is for now
+# so the current numbers are reproducible; revisit with Zach.
 
 sample_info <- read.csv("Z:/projects/Mill24/field_data/sample_info.csv") %>% 
   select(Sample_ID, Species_Code, Type)
 
-PredictedChemVPA <- full_join(PredictedChem, sample_info, join_by(Sample_ID)) %>%  
-  mutate(DryingTreatment = substring(sample_name, 13, 14)) %>% 
-  mutate(MillingTreatment = substring(sample_name, 16, 19))
+PredictedChemVPA <- PredictedChem %>%
+  left_join(sample_info, join_by(Sample_ID)) %>%
+  mutate(DryingTreatment  = substring(sample_name, 13, 14),
+         MillingTreatment = substring(sample_name, 16, 19))
 
-VPAModelCa <- varpart(Y = PredictedChem$PredictedCalcium, X = ~PredictedChemVPA$Species_Code, ~PredictedChemVPA$Type, ~PredictedChemVPA$MillingTreatment, ~PredictedChemVPA$DryingTreatment, data = PredictedChemVPA, chisquare = FALSE)  
+# NOTE: Species_Code and Type are collinear (Type is fixed by species), so
+# varpart() reports "results are probably incorrect" for the fractions that
+# involve both. Pre-existing; resolve (drop one, or nest) if the VPA stays.
 
-summary(VPAModelCa)
+vpa_plot <- function(model, file) {
+  png(file.path(out_dir, file), width = 1200, height = 1200, res = 200)
+  plot(model, bg = 2:5)
+  dev.off()
+}
 
-VPACa <- plot(VPAModelCa, bg = 2:5)
+VPAModelCa <- varpart(PredictedChemVPA$PredictedCalcium,
+                      ~ Species_Code, ~ Type,
+                      ~ MillingTreatment, ~ DryingTreatment,
+                      data = PredictedChemVPA, chisquare = FALSE)
+print(VPAModelCa)
+vpa_plot(VPAModelCa, "varpart_calcium.png")
 
-VPAModelN <- varpart(Y = PredictedChem$PredictedNitrogen, X = ~PredictedChemVPA$Species_Code, ~PredictedChemVPA$Type, ~PredictedChemVPA$MillingTreatment, ~PredictedChemVPA$DryingTreatment, data = PredictedChemVPA, chisquare = FALSE)  
-
-summary(VPAModelN)
-
-VPAN <- plot(VPAModelN, bg = 2:5)
-
-
-
+VPAModelN <- varpart(PredictedChemVPA$PredictedNitrogen,
+                     ~ Species_Code, ~ Type,
+                     ~ MillingTreatment, ~ DryingTreatment,
+                     data = PredictedChemVPA, chisquare = FALSE)
+print(VPAModelN)
+vpa_plot(VPAModelN, "varpart_nitrogen.png")

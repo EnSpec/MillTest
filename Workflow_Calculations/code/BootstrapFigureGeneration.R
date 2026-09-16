@@ -11,11 +11,15 @@
 ##############################################
 
 library(tidyverse)
-setwd("C:/Mill24/Bootstrapped")
 
 file_list <- list.files(path = "Z:/projects/Mill24/BootstrappedData", pattern = ".csv", full.names = TRUE)
 
-BootDataFull <- lapply(file_list, read.csv) %>% 
+out_dir <- file.path(data_root, "derived", "bootstrap")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+file_list <- list.files(path = file.path(data_root, "BootstrappedData"), pattern = ".csv", full.names = TRUE)
+
+BootDataFull <- lapply(file_list, read.csv) %>%
   bind_rows()
 
 
@@ -38,7 +42,7 @@ BootDataSampleMean <- full_join(BootDataSampleMean, sampleinfo, join_by(sample_n
 
 columnnames <- c("sample_name", "Type", "treatment1", "treatment2", "stat")
 
-BootDataSamplePivot <- pivot_longer(BootDataSampleMean, cols = !columnnames) %>% 
+BootDataSamplePivot <- pivot_longer(BootDataSampleMean, cols = !all_of(columnnames)) %>% 
   rename(Wavelength = name, Reflectance = value) %>% 
   mutate(Wavelength = strtoi(substring(Wavelength, 2)))
 
@@ -63,8 +67,8 @@ BootData <- full_join(BootDataSamplePivot, BootDataTreatmentMean) %>%
   mutate(Reflectance = Reflectance * 100)
 
 workingplot = ggplot() +
-  geom_line(data = subset(BootData, stat == "Sample"), 
-            aes(x = Wavelength, y = Reflectance, group = sample_name, color = Stat), 
+  geom_line(data = subset(BootData, stat == "Sample"),
+            aes(x = Wavelength, y = Reflectance, group = sample_name),
             alpha = 0.3, linewidth = 1, color = "gray") +
   geom_abline(slope = 0, intercept = 0, color = "#737370", linewidth = 1) +
   geom_line(data = subset(BootData, stat == "Mean"),
@@ -78,7 +82,7 @@ workingplot = ggplot() +
   theme(legend.position = "none", strip.text = element_text(size = 15), axis.title = element_text(size = 20)) 
 workingplot
 
-ggsave("BootstrapBiasChart.png", workingplot, dpi = 300, scale = 4, width = 4, height = 3)
+ggsave(file.path(out_dir, "BootstrapBiasChart.png"), workingplot, dpi = 300, scale = 4, width = 4, height = 3)
 
 # Calculations for difference summaries
 
@@ -92,7 +96,7 @@ bias <- bias %>%
 
 # Pivot data frame to calculate stats
 columnnames <- c("sample_name", "Type", "treatment1", "treatment2")
-biaspivot = pivot_longer(bias, cols = !columnnames)
+biaspivot = pivot_longer(bias, cols = !all_of(columnnames))
 biaspivot = biaspivot %>% 
   rename(Wavelength = name) %>% 
   rename(PercentBias = value) %>% 
@@ -126,11 +130,7 @@ averageallBroadleaf = subset(biaspivot, Type == "Broadleaf") %>%
   group_by(treatment1, treatment2) %>% 
   summarize(Reflectance = mean(PercentBias))
 
-averagevisiblebroadleaf = subset(biaspivot, Type == "Broadleaf") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averagevisiblebroadleaf = subset(biaspivot, Wavelength >= 400 & Wavelength <= 700 & Type == "Broadleaf") %>% 
+averagevisiblebroadleaf = subset(biaspivot, Wavelength >= 400 & Wavelength <= 700 & Type == "Broadleaf") %>%
   group_by(treatment1, treatment2) %>% 
   summarize(Reflectance = mean(PercentBias))
 

@@ -2,26 +2,24 @@
 #
 # Mill Test Bootstrap Resampling
 #
-# Authors: Mill Test Team
+# Authors: Zach Breuer, Mill Test Team
 #
 # Project: Mill Test
 #
-# Date: 4/29/2026
+# Date: 4/29/2026 (paths de-hard-coded -- 2026-09-11)
 #
 ##########################################################
 
 library(tidyverse)
-library(boot)
-library(doParallel)
-library(foreach)
 library(gtools)
 setwd("Z:projects/Mill24/BootstrappedData")
 
-set.seed(0220)
-cores <-  detectCores() - 1
-cluster <- makeCluster(cores)
-registerDoParallel(cluster)
+# --- data location (see README) --------------------------------------------
+data_root <- Sys.getenv("MILL24_DATA_ROOT",
+                        unset = "/Volumes/Enspec/projects/Mill24")
 
+out_dir <- file.path(data_root, "BootstrappedData")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 spectraldata <- read.csv("Z:/projects/Mill24/Mill24_RawSpec.csv") %>% 
   mutate(SampleID = substring(sample_name, 1, 11))
@@ -30,43 +28,37 @@ spectraldata <- read.csv("Z:/projects/Mill24/Mill24_RawSpec.csv") %>%
 iteration = 1200
 
 for(sample in unique(spectraldata$SampleID)) {
-spectraldatasubset <- spectraldata %>% 
+spectraldatasubset <- spectraldata %>%
   filter(SampleID == sample) %>%
-  mutate(treatment = substring(sample_name, 13, 19)) %>% 
+  mutate(treatment = substring(sample_name, 13, 19)) %>%
   select(sample_name, treatment, SampleID, everything())
 
-treatmentcombination = as.data.frame(combinations(6, 2, spectraldatasubset[[2]], repeats = FALSE)) %>% 
+treatmentcombination = as.data.frame(combinations(6, 2, spectraldatasubset[[2]], repeats = FALSE)) %>%
   slice(12:15)
 output = list()
   for(e in 1:nrow(treatmentcombination)) {
- 
-    treatment1 = spectraldatasubset %>%  
+
+    treatment1 = spectraldatasubset %>%
       filter(treatment == treatmentcombination[e, 1])
-    
-    treatment2 = spectraldatasubset %>% 
+
+    treatment2 = spectraldatasubset %>%
       filter(treatment == treatmentcombination[e, 2])
-    
-    distributiondf <- foreach(j = 1:iteration, .combine = rbind, .packages = "tidyverse") %dopar% {
-      bootstorage <-  intersect(treatment1[,3:ncol(treatment1)], treatment2[,3:ncol(treatment2)])
-      for(q in 1:6){
-        bootstorage <- rbind(bootstorage, treatment1[sample(1:nrow(treatment1), size = 1),4:ncol(treatment1)] - treatment2[sample(1:nrow(treatment2), size = 1),4:ncol(treatment2)])
-      }
-    
-      bootstorage %>% 
-        mutate(sample_name = sample) %>% 
-        mutate(treatment1 = treatmentcombination[e, 1]) %>% 
-        mutate(treatment2 = treatmentcombination[e, 2]) %>% 
-        group_by(sample_name, treatment1, treatment2) %>% 
-        summarize(across(everything(), mean, na.rm = TRUE))
-    }
+
+    # Every treatment1-replicate x treatment2-replicate combination,
+    # exhaustively -- not a random sample of them.
+    pairs <- expand.grid(i = seq_len(nrow(treatment1)), j = seq_len(nrow(treatment2)))
+    distributiondf <- pmap_dfr(pairs, function(i, j) {
+      (treatment1[i, 4:ncol(treatment1)] - treatment2[j, 4:ncol(treatment2)]) %>%
+        mutate(sample_name = sample,
+               treatment1 = treatmentcombination[e, 1],
+               treatment2 = treatmentcombination[e, 2])
+    })
   output[[e]] <- distributiondf
                     }
   for (i in seq_along(output)){
-    write.csv(output[[i]], file = paste(output[[i]][["sample_name"]][1],"_", output[[i]][["treatment1"]][1], "_", output[[i]][["treatment2"]][1], ".csv"), row.names = F)
+    write.csv(output[[i]], file = file.path(out_dir, paste0(output[[i]][["sample_name"]][1], "_", output[[i]][["treatment1"]][1], "_", output[[i]][["treatment2"]][1], ".csv")), row.names = F)
   }
 }
-
-stopCluster(cluster)
 
 
 

@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the metadata below. See also
+  the manuscript this code supports, "Effects of drying and milling
+  treatments on estimates of foliar functional traits with VSWIR
+  spectroscopy" (full citation TBD), and the companion trait + spectra
+  dataset on EcoSIS (DOI TBD).
+title: "Analysis code for the effects of drying and milling treatments on estimates of foliar functional traits with VSWIR spectroscopy"
+type: software
+license: GPL-3.0
+repository-code: "https://github.com/EnSpec/MillTest"
+authors:
+  - family-names: Frye
+    given-names: Henry
+    affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
+    email: hfrye2@wisc.edu
+    orcid: "https://orcid.org/0000-0002-2066-5742"
+  - family-names: Breuer
+    given-names: Zach
+    affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
+    email: zbreuer@wisc.edu
+    orcid: "https://orcid.org/0009-0002-7252-2716"
+  - family-names: Majerus
+    given-names: Annabelle
+    affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
+    email: aemajerus@crimson.ua.edu
+    orcid: "https://orcid.org/0009-0006-6432-0232"
+  - family-names: Townsend
+    given-names: Philip A.
+    affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
+    email: ptownsend@wisc.edu
+    orcid: "https://orcid.org/0000-0001-7003-8774"
+references:
+  - type: software
+    title: SpectralPredictR
+    authors:
+      - family-names: Kovach
+        given-names: Kyle R.
+    repository-code: "https://github.com/krkovach/SpectralPredictR"
+  - type: dataset
+    title: NEON-Trait-Models
+    repository-code: "https://github.com/EnSpec/NEON-Trait-Models"
+    url: "https://ecosml.org/package/github/EnSpec/NEON-Trait-Models"
