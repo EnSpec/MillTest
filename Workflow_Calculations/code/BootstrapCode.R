@@ -12,6 +12,7 @@
 
 library(tidyverse)
 library(gtools)
+setwd("Z:projects/Mill24/BootstrappedData")
 
 # --- data location (see README) --------------------------------------------
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
@@ -20,28 +21,11 @@ data_root <- Sys.getenv("MILL24_DATA_ROOT",
 out_dir <- file.path(data_root, "BootstrappedData")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-
-spectraldata <- read.csv(file.path(data_root, "Mill24_RawSpec.csv")) %>%
+spectraldata <- read.csv("Z:/projects/Mill24/Mill24_RawSpec.csv") %>% 
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
-# RESOLVED (2026-09-15, Henry): with only 6 spectral replicates per sample
-# x treatment, the population of possible replicate-pair differences for
-# a given treatment comparison is small and finite -- 6 x 6 = 36 (every
-# treatment1-replicate vs. every treatment2-replicate, including "1 vs.
-# 1", not just distinct pairs). Randomly resampling from a pool that
-# small (even thousands of times, as the mean-of-6 and single-draw
-# versions both did) just redraws the same combinations repeatedly with
-# gaps and duplicates -- exhaustively computing all of them directly is
-# both more complete and far cheaper than any amount of random sampling.
-# This is no longer really a "bootstrap" in the resampling sense, though
-# the script/folder names are kept for continuity with everything already
-# built around them (BootstrappedData/, BootstrapFigureGeneration.R).
-# No parallel cluster needed either -- 66 samples x 4 comparisons x 36
-# combinations = 9,504 total rows, trivially fast to compute directly.
-# Manuscript methods text (currently "a random replicate was chosen...
-# iterated N times") needs rewriting to describe full enumeration, not a
-# bootstrap draw count.
+iteration = 1200
 
 for(sample in unique(spectraldata$SampleID)) {
 spectraldatasubset <- spectraldata %>%

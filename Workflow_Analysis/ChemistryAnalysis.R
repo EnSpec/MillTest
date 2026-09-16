@@ -182,7 +182,7 @@ ggsave(file.path(out_dir, "ChemPlotGrid.png"), ObsvsPredPlotGrid,
 # each Type (Broadleaf, Conifer) and drop Type as a table. Left as-is for now
 # so the current numbers are reproducible; revisit with Zach.
 
-sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
+sample_info <- read.csv("Z:/projects/Mill24/field_data/sample_info.csv") %>% 
   select(Sample_ID, Species_Code, Type)
 
 PredictedChemVPA <- PredictedChem %>%
