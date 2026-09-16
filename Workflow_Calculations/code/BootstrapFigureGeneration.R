@@ -12,7 +12,9 @@
 
 library(tidyverse)
 
-file_list <- list.files(path = "Z:/projects/Mill24/BootstrappedData", pattern = ".csv", full.names = TRUE)
+# --- data location (see README) --------------------------------------------
+data_root <- Sys.getenv("MILL24_DATA_ROOT",
+                        unset = "/Volumes/Enspec/projects/Mill24")
 
 out_dir <- file.path(data_root, "derived", "bootstrap")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -23,8 +25,8 @@ BootDataFull <- lapply(file_list, read.csv) %>%
   bind_rows()
 
 
-sampleinfo <- read.csv("Z:/projects/Mill24/field_data/sample_info.csv") %>% 
-  rename(sample_name = Sample_ID) %>% 
+sampleinfo <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
+  rename(sample_name = Sample_ID) %>%
   select(sample_name, Type)
 
 BootDataSampleMean <- BootDataFull %>% 
