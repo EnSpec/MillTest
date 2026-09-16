@@ -14,6 +14,8 @@
 ##################################################
 
 library(tidyverse)
+library(flextable)
+library(officer)
 
 # --- data location (see README) --------------------------------------------
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
@@ -215,8 +217,63 @@ tex_lines <- c(tex_lines,
 
 writeLines(tex_lines, file.path(out_dir, "table1.tex"))
 
+# --- Word table, via flextable/officer --------------------------------------
+# A real editable Word table (paste-able straight into the manuscript .docx
+# as a native table, not an image) instead of typesetting to PDF and
+# cropping -- same 4-comparison x 3-group x 5-region layout as the LaTeX
+# version, but as one table with a 2-level spanning header rather than two
+# side-by-side blocks (that split in the .tex version was only to fit
+# adjustbox's page-width scaling; Word doesn't need it).
+
+comparisons_ordered <- c("Ball - Coarse", "Ball - Fine", "Fine - Coarse", "Freeze Dried - Oven Dried")
+groups_ordered <- c("All Data", "Broadleaved", "Needle-Leaved")
+
+docx_wide <- table1_long %>%
+  mutate(Value = round(Value, 2),
+         col = paste(Comparison, Group, sep = " | ")) %>%
+  select(Region, col, Value) %>%
+  pivot_wider(names_from = col, values_from = Value) %>%
+  arrange(Region)
+
+data_cols <- as.vector(outer(groups_ordered, comparisons_ordered,
+                              function(g, c) paste(c, g, sep = " | ")))
+docx_wide <- docx_wide %>% select(Region, all_of(data_cols))
+
+bottom_labels <- setNames(as.list(rep(groups_ordered, length(comparisons_ordered))), data_cols)
+bottom_labels$Region <- "Spectral Region"
+
+ft <- flextable(docx_wide) %>%
+  set_header_labels(values = bottom_labels) %>%
+  add_header_row(
+    values = c("", comparisons_ordered),
+    colwidths = c(1, rep(3, length(comparisons_ordered))),
+    top = TRUE
+  ) %>%
+  merge_v(j = 1, part = "header") %>%
+  align(align = "center", part = "all") %>%
+  align(j = 1, align = "left", part = "all") %>%
+  valign(valign = "center", part = "header") %>%
+  bold(part = "header") %>%
+  border_remove() %>%
+  hline(part = "all", border = fp_border(width = 0.75)) %>%
+  vline(j = 1, border = fp_border(width = 0.75)) %>%
+  vline(j = seq(4, length(data_cols), by = 3) + 1, border = fp_border(width = 0.75)) %>%
+  fontsize(size = 9, part = "all") %>%
+  width(j = 1, width = 1.4) %>%
+  width(j = 2:(length(data_cols) + 1), width = 0.7)
+
+# 13 columns don't fit a portrait page at a readable font size -- landscape,
+# same fix as the LaTeX version's adjustbox{width=1\textwidth} scaling.
+landscape_section <- prop_section(
+  page_size = page_size(orient = "landscape"),
+  page_margins = page_mar(bottom = 0.75, top = 0.75, right = 0.5, left = 0.5)
+)
+
+save_as_docx(ft, path = file.path(out_dir, "table1.docx"), pr_section = landscape_section)
+
 print(as.data.frame(table1_wide))
-cat(sprintf("\nWrote %s, %s, %s\n",
+cat(sprintf("\nWrote %s, %s, %s, %s\n",
            file.path(out_dir, "table1_spectral_regions_long.csv"),
            file.path(out_dir, "table1_spectral_regions_wide.csv"),
-           file.path(out_dir, "table1.tex")))
+           file.path(out_dir, "table1.tex"),
+           file.path(out_dir, "table1.docx")))
