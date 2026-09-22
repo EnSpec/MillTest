@@ -48,6 +48,76 @@ same numbers used in the manuscript.
 | `BootstrappedData/` | **169M** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
 | `derived/ecosis/spectral_metadata_sidecar.csv` | ~1M | `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — the per-spectrum EcoSIS metadata sidecar (2418 rows, 66 columns). **Updated 2026-09-17**: now also carries per-sample x mill-treatment particle-size moments (`particle_size_mean_um`/`_variance`/`_skew`/`_kurtosis`); per-sample x dry-treatment isotope (`d13C`/`d15N`/`carbon_mg_g`/`nitrogen_IRMS_mg_g`), TPC (`phenolics_mg_g`/`_sd`), ANKOM (`hemicellulose_mg_g`/`cellulose_mg_g`/`lignin_recal_mg_g`), and fat-assay (`oil_content_mg_g`/`oil_mass_mg`) values; the full per-sample Brookside elemental panel (`nitrogen_mg_g` through `sodium_mg_g`, 13 elements); per-sample chlorophyll (`chlorophyll_1`-`5`); and per-sample leaf traits (`fresh_mass_g`/`dry_mass_g`/`water_content`/`leaf_area_cm2`/`lma_g_m2`) — see "Not used by this manuscript's analyses" below for where each is cleaned from. **Renamed 2026-09-17 (Henry)**: `carbon_pct`/`nitrogen_pct`/`oil_content_pct` → `carbon_mg_g`/`nitrogen_IRMS_mg_g`/`oil_content_mg_g`, converting all three to mg/g for unit consistency with the rest of the deposit ("IRMS" distinguishes this elemental-analyzer-derived %N from Brookside's separately-assayed `nitrogen_mg_g`). **Added 2026-09-17**: `leaf_area_cm2` (from `field_data/Mill24_LMA.xlsx` via new script `LeafAreaExtract.R`) and `lma_g_m2` (= `dry_mass_g` / `leaf_area_cm2` × 10000), joined at the Sample_ID level like the other tree-level fields. Populated only where each source has coverage (particle size: 22 samples, isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8, Brookside: 60, chlorophyll: 62, fresh/dry mass + water content: 52, leaf area/LMA: 52), NA elsewhere (expected, not a join bug). Still pending the controlled-vocabulary check noted in CLAUDE.md before calling this final. |
 
+## Data quality checks — flag columns that ship with the deposit
+
+**New 2026-09-22.** First implementation of the project-wide QC standard
+(see CLAUDE.md "Data QC standard"): hold this data to DAAC-level QC even
+though this deposit isn't NASA-funded or DAAC-bound. The shared,
+project-agnostic checks live in a separate repo,
+[`EnSpec/enspec-qc`](https://github.com/EnSpec/enspec-qc); everything
+data-dependent (grouping variable per trait, bounds, thresholds) lives in
+`Workflow_Calculations/code/qc_config_milltest.R`, committed here because
+it's part of this deposit's provenance.
+
+**This deposit is flag-only** (Henry, 2026-09-20): nothing is removed or
+NA'd out. Every check writes a flag table; flags are broadcast to the
+per-spectrum grain and carried into the deposit as two columns
+(`quality_flag`, `n_checks_flagged`). Downstream users can filter on them;
+nothing is silently dropped.
+
+| File | Size | Produced by |
+|---|---|---|
+| `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `quality_flag` / `n_checks_flagged`. **This is the file to deposit** in place of the bare sidecar, or alongside it. |
+| `derived/qc/qc_check_summary.csv` | 1.5K | same — one row per check, with how many rows it flagged. The short QC report. |
+| `derived/qc/qc_quality_flag_by_spectrum.csv` | ~180K | same — per-spectrum flag reasons, joinable to any other spectral file by `spectra`. |
+| `derived/qc/*_flags.csv` | ~550K total | same — one table per check, carrying the offending value, the group median/bound it was compared against, and the deviation. 34 tables in the current run. |
+
+What runs, and what it found on the 2026-09-22 run (2376 spectra):
+
+- **Hard-bounds sweep** — physically impossible values plus literature
+  ranges. Bounds are TRY 6.0 (Kattge et al. 2020) for the elements and
+  chemistry, Wright et al. 2004 for LMA, Craine et al. 2015 for d15N. 2832
+  flags. Two things worth knowing when reading these: (1) the Brookside
+  trace-element flags (Al, Cu, Fe) are almost all legitimate
+  below-detection values that `BrooksideExtract.R` floors to half the
+  detection limit — floored, not measured, which is exactly what a reader
+  should be told; (2) chlorophyll is a CCM-300 leaf-area measurement in
+  mg/m^2, so its bounds come from TRY's per-leaf-area chlorophyll trait
+  filtered to `UnitName == "g m-2"` — that trait pools true mass
+  measurements with unconvertible SPAD/CCI/FCI index readings, and the
+  unfiltered range is meaningless.
+- **Magnitude / decimal-shift and distribution flags** — robust, computed
+  within the grouping variable each trait actually varies over (species
+  for tree-level traits; species x drying treatment for the chemistry;
+  growth form x mill treatment for particle size).
+- **Leave-one-out bad-replicate check** — runs on the CCM-300 chlorophyll
+  reads, the one place in the derived data with genuine within-individual
+  instrument replication (5 leaves per tree, stored as 5 columns). Found 4
+  suspect reads, all failing low (ratio 0.16-0.49 vs. their own siblings),
+  consistent with the probe not seating on the leaf. Only one of the four
+  was also below the literature floor — the other three are only visible
+  against their own siblings.
+- **Spectral checks** — 0 flat/extreme spectra, 0 physically impossible
+  reflectance values, 67 (2.8%) within-group shape outliers by spectral
+  angle from the group median, grouped by sample x mill x dry treatment
+  (the 6-replicate set). Run against
+  `SpectralPredictR_raw_spectra.csv` (jump-corrected, pre-normalization) —
+  **not** the 5nm resampled file, which is vector-normalized and therefore
+  has no meaningful reflectance scale to threshold against.
+
+~86% of spectra carry at least one flag, which reads alarmingly high until
+you account for the broadcast: a single sample-level chemistry flag
+attaches to all 36 spectra for that sample (3 mill x 2 dry x 6 replicates),
+and the trace-element detection-floor flags alone account for a large
+share. `qc_check_summary.csv` is the honest per-check view.
+
+**Still open before the deposit is final**: no confirmed literature range
+for `oil_content_mg_g` (TRY's lipid trait returned no usable rows) or
+`sodium_mg_g` (no TRY leaf-Na trait) — both have a physical 0-1000 mg/g
+ceiling only. Particle-size moments deliberately have no literature
+bounds (instrument output, not a trait with an independent plausible
+range).
+
 ## Collected but not used in the manuscript — Henry wants these deposited anyway
 
 **New 2026-09-16**: `Mill24_RawSpec.csv` / `DrySpec/` / `BootstrappedData/`
