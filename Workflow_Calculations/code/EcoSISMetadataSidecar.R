@@ -27,6 +27,35 @@
 # vocabulary (only checked against one example deposit, not their full
 # documentation), and this depends on the duplicate-spectral-scan
 # resolution already applied upstream in SpectralMeasurementMetadata.R.
+#
+# 2026-09-17 (Henry): also join in particle size and the isotope/TPC/ANKOM/
+# fat-assay chemistry data as real columns here, not just raw xlsx files
+# alongside the deposit -- the per-spectrum shape is what people will
+# actually use. See ParticleStat.R and the Isotope/TPC/Ankom/FatAssayExtract.R
+# scripts for how each of those is cleaned before this join. None of these
+# cover every sample (isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8,
+# particle size: 22) -- NA elsewhere is expected, not a join bug.
+#
+# 2026-09-17 (later, Henry): also add the full Brookside elemental panel
+# (BrooksideExtract.R -- 60 samples, one assay per sample, OD + 20-mesh
+# material only, joined at the Sample_ID level same as ChemistryAnalysis.R
+# does) and the fresh/dry mass + chlorophyll values already carried in
+# sample_info.csv. These are tree-level, not treatment-level (one
+# measurement per individual, not per drying/milling treatment) -- joined
+# at the Sample_ID level and broadcast across every treatment/replicate row
+# for that sample, same as Species/Type/coordinates already are below.
+#
+# 2026-09-17 (even later, Henry): renamed carbon_pct/nitrogen_pct to
+# carbon_mg_g/nitrogen_IRMS_mg_g and oil_content_pct to oil_content_mg_g,
+# converting all three to mg/g for unit consistency with the rest of the
+# deposit's chemistry values (source conversion lives in IsotopeExtract.R /
+# FatAssayExtract.R, not here). "IRMS" in the nitrogen name distinguishes
+# this elemental-analyzer-derived %N from Brookside's separately-assayed
+# nitrogen_mg_g. Also added leaf mass per area (LMA = dry mass / leaf area)
+# -- leaf_area_cm2 comes from LeafAreaExtract.R
+# (field_data/Mill24_LMA.xlsx), joined at the Sample_ID level like the
+# other tree-level fields; lma_g_m2 is computed here from that plus the
+# Dry_mass already joined in from sample_info.csv.
 
 library(tidyverse)
 
@@ -46,6 +75,51 @@ spec_meta <- read.csv(file.path(data_root, "derived", "spectral_metadata",
 
 sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv"))
 
+# Per-sample x mill-treatment particle-size moments -- see
+# Workflow_Analysis/ParticleStat.R. Treatment-level, not per-replicate, so
+# every replicate row within a sample x mill treatment gets the same value.
+# Only covers the 22-individual particle-size campaign (a subset of all 61-66
+# samples) plus the 2 Jun13 pilot samples -- NA for everyone else, expected.
+particle_size <- read.csv(file.path(data_root, "derived", "particle_size",
+                                    "particle_size_per_sample.csv")) %>%
+  select(Sample, Treatment, Mean, Variance, Skew, Kurtosis) %>%
+  rename(
+    particle_size_mean_um     = Mean,
+    particle_size_variance    = Variance,
+    particle_size_skew        = Skew,
+    particle_size_kurtosis    = Kurtosis
+  )
+
+# Per-sample x DRY-treatment chemistry (isotope, TPC, ANKOM, fat assay) --
+# see IsotopeExtract.R / TPCExtract.R / AnkomExtract.R / FatAssayExtract.R.
+# Not per-replicate or per-mill-treatment (these assays were only run once
+# per sample x drying treatment), so every mill treatment x replicate row
+# within a sample x dry treatment gets the same values. None of these cover
+# every sample -- isotope is 11 samples, TPC/ANKOM are subsets too -- NA
+# elsewhere is expected, not a join bug. Henry's call 2026-09-17: worth
+# joining these directly into the sidecar rather than only shipping raw
+# xlsx files, since the per-spectrum shape is what actually gets used.
+
+isotope <- read.csv(file.path(data_root, "derived", "isotope", "isotope_mill_test.csv"))
+tpc     <- read.csv(file.path(data_root, "derived", "tpc", "tpc_mill_test.csv"))
+ankom   <- read.csv(file.path(data_root, "derived", "ankom", "ankom_mill_test.csv"))
+fat_assay <- read.csv(file.path(data_root, "derived", "fat_assay", "fat_assay_mill_test.csv"))
+
+# Per-sample (not per-treatment) full elemental panel -- see
+# BrooksideExtract.R. One Brookside assay per sample (OD + 20-mesh material
+# only); joined at the Sample_ID level and broadcast across every
+# treatment/replicate row for that sample, same as ChemistryAnalysis.R's own
+# treatment of this file (the single assayed value is the shared ground
+# truth every treatment's spectral prediction gets compared against, not
+# itself specific to one treatment's material). Covers 60 of the ~61-66
+# samples -- NA for the rest, expected.
+brookside <- read.csv(file.path(data_root, "derived", "brookside", "brookside_mill_test.csv"))
+
+# Per-sample leaf area, for computing leaf mass per area (LMA = dry mass /
+# area) -- see LeafAreaExtract.R. Tree-level like Fresh_mass/Dry_mass above,
+# not treatment-specific. Covers 52 of the ~61-66 samples -- NA for the rest.
+leaf_area <- read.csv(file.path(data_root, "derived", "leaf_area", "leaf_area_mill_test.csv"))
+
 # --- build the sidecar ---------------------------------------------------
 
 # sample_info.csv's X_Coord/Y_Coord are latitude/longitude respectively
@@ -55,9 +129,26 @@ sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv"))
 ecosis_sidecar <- spec_meta %>%
   left_join(
     sample_info %>%
-      select(Sample_ID, Species, Species_Code, Type, X_Coord, Y_Coord),
+      select(Sample_ID, Species, Species_Code, Type, X_Coord, Y_Coord,
+            Chl1, Chl2, Chl3, Chl4, Chl5, Fresh_mass, Dry_mass, Water_Content),
     by = c("SampleID" = "Sample_ID")
   ) %>%
+  # particle_size_per_sample.csv's Treatment uses the recoded milling labels
+  # (Ball/Fine/Twenty); spec_meta's MillTreat is the raw asd-filename code
+  # (BALL/SIXT/TWEN) -- recode here just to join, matching ParticleStat.R's
+  # own recode() exactly.
+  mutate(mill_treatment_label = recode(MillTreat,
+                                       BALL = "Ball", SIXT = "Fine", TWEN = "Twenty")) %>%
+  left_join(
+    particle_size,
+    by = c("SampleID" = "Sample", "mill_treatment_label" = "Treatment")
+  ) %>%
+  left_join(isotope,   by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
+  left_join(tpc,       by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
+  left_join(ankom,     by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
+  left_join(fat_assay, by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
+  left_join(brookside, by = c("SampleID" = "Sample_ID")) %>%
+  left_join(leaf_area, by = c("SampleID" = "Sample_ID")) %>%
   transmute(
     spectra           = sample_name,
     site              = "Lakeshore Nature Preserve",
@@ -84,6 +175,44 @@ ecosis_sidecar <- spec_meta %>%
     calibration       = "Spectralon Ratio",
     wavelengths       = "Nanometers",
     column_units      = "Fraction",  # 0-1 reflectance, NOT percent -- confirmed 2026-09-15 against Mill24_RawSpec.csv value range
+    particle_size_mean_um  = particle_size_mean_um,
+    particle_size_variance = particle_size_variance,
+    particle_size_skew     = particle_size_skew,
+    particle_size_kurtosis = particle_size_kurtosis,
+    d13C                   = d13C,
+    d15N                   = d15N,
+    carbon_mg_g            = carbon_mg_g,
+    nitrogen_IRMS_mg_g     = nitrogen_IRMS_mg_g,
+    phenolics_mg_g         = phenolics_mg_g,
+    phenolics_sd           = phenolics_sd,
+    hemicellulose_mg_g     = hemicellulose_mg_g,
+    cellulose_mg_g         = cellulose_mg_g,
+    lignin_recal_mg_g      = lignin_recal_mg_g,
+    oil_content_mg_g       = oil_content_mg_g,
+    oil_mass_mg            = oil_mass_mg,
+    nitrogen_mg_g          = nitrogen_mg_g,
+    phosphorus_mg_g        = phosphorus_mg_g,
+    magnesium_mg_g         = magnesium_mg_g,
+    potassium_mg_g         = potassium_mg_g,
+    calcium_mg_g           = calcium_mg_g,
+    sulfur_mg_g            = sulfur_mg_g,
+    boron_mg_g             = boron_mg_g,
+    iron_mg_g              = iron_mg_g,
+    manganese_mg_g         = manganese_mg_g,
+    copper_mg_g            = copper_mg_g,
+    zinc_mg_g              = zinc_mg_g,
+    aluminum_mg_g          = aluminum_mg_g,
+    sodium_mg_g            = sodium_mg_g,
+    fresh_mass_g           = Fresh_mass,
+    dry_mass_g             = Dry_mass,
+    water_content          = Water_Content,
+    leaf_area_cm2          = leaf_area_cm2,
+    lma_g_m2               = Dry_mass / leaf_area_cm2 * 10000,  # g/cm^2 -> g/m^2
+    chlorophyll_1          = Chl1,
+    chlorophyll_2          = Chl2,
+    chlorophyll_3          = Chl3,
+    chlorophyll_4          = Chl4,
+    chlorophyll_5          = Chl5,
     project           = "Milling and drying comparison 2024",
     pi                = "Philip A. Townsend",
     affiliation       = "University of Wisconsin-Madison, Forest and Wildlife Ecology"
