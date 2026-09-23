@@ -256,6 +256,37 @@ replicate_column_sets <- list(
   )
 )
 
+# ---- Sequential assay chains -------------------------------------------
+# ANKOM fiber is a sequential wash: NDF, then ADF on the NDF residue, then
+# ADL on the ADF residue. A failure at an early stage puts everything
+# derived after it in doubt, whether or not the later value looks sane
+# (Henry, 2026-09-23). Traits listed in processing order.
+#
+# Policy is "flag", not "remove", and that's a considered choice for the one
+# case this currently fires on. MILL24_0035 FF has an impossible
+# hemicellulose, and tracing the arithmetic shows exactly why: hemicellulose
+# = Perc_Remaining_Post_NDF - Perc_Remaining_Post_ADF, and that sample's
+# stated Perc_Remaining_Post_NDF (16.82%) disagrees with its own weights,
+# which imply 45.31%. Across the rest of the FF batch stated and
+# weight-derived agree to within ~0.7 points, and Perc_Remaining_Post_ADF is
+# consistent for every row including this one. So a single cell is wrong.
+# Cellulose (post-ADF minus post-ADL) and lignin (post-ADL) don't use that
+# cell, so they're very likely fine -- but "very likely fine, per Claude's
+# arithmetic" isn't the standard for a deposit, so they get flagged for a
+# human to confirm rather than silently trusted or silently dropped.
+#
+# Side note worth acting on separately: the underlying value is recoverable.
+# Recomputing post-NDF from the weights gives hemicellulose ~12.8%, an
+# unremarkable number for this batch (range up to 39.3%). Fixing that one
+# cell would restore the measurement rather than lose it.
+sequential_assay_chains <- list(
+  ankom_fiber = list(
+    chain    = c("hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g"),
+    key_cols = c("sample_name", "dry_treatment"),
+    policy   = "flag"
+  )
+)
+
 # ---- Covariation checks --------------------------------------------------
 # Trait pairs expected to strongly covary (robust SMA). First row mirrors
 # the GCFR N-vs-LMA leaf-economics-spectrum precedent directly; second is

@@ -77,6 +77,25 @@ flag_list[["trait_physical_bounds"]] <- qc_write_log(physical_flags, out_dir, "t
 literature_flags <- qc_hard_bounds(sidecar, flag_only_bounds, trait_id_cols)
 flag_list[["trait_literature_bounds"]] <- qc_write_log(literature_flags, out_dir, "trait_literature_bounds")
 
+# Sequential-assay cascade: a failure early in a sequential wash puts every
+# trait derived after it in doubt. Runs off the physical-bounds failures,
+# since those are the unambiguous ones.
+for (chain_name in names(sequential_assay_chains)) {
+  spec <- sequential_assay_chains[[chain_name]]
+  cascade <- qc_sequential_cascade(
+    physical_flags %>% distinct(across(all_of(c(spec$key_cols, "trait_flagged")))),
+    chain = spec$chain,
+    key_cols = spec$key_cols
+  )
+  if (nrow(cascade) > 0) {
+    flag_list[[paste0(chain_name, "_cascade")]] <-
+      qc_write_log(cascade, out_dir, paste0(chain_name, "_cascade"))
+    if (!identical(spec$policy, "flag")) {
+      warning(sprintf("chain '%s' has policy '%s' but only 'flag' is wired up", chain_name, spec$policy))
+    }
+  }
+}
+
 # ---- 1b. Magnitude-shift + distribution checks, per trait category -----
 # Dedup to the level each trait category actually varies at (see
 # qc_config_milltest.R comments) before running group-based checks, so a

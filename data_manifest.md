@@ -111,6 +111,22 @@ What runs, and what it found on the 2026-09-23 run (2376 spectra):
   deposit copy and recorded in `removal_log.csv`. That sample's cellulose,
   lignin and OD hemicellulose are untouched. Nothing else in the dataset is
   physically impossible.
+- **`ankom_fiber_cascade`** — **2 values flagged.** ANKOM is a sequential
+  wash (NDF → ADF on the NDF residue → ADL on the ADF residue), so a failure
+  at an early stage puts everything derived after it in doubt regardless of
+  whether the later value looks sane. `MILL24_0035` FF's cellulose and lignin
+  are flagged as downstream of its failed hemicellulose. **Flagged, not
+  removed**, and the evidence says they're probably fine: hemicellulose =
+  `Perc_Remaining_Post_NDF − Perc_Remaining_Post_ADF`, and only the first of
+  those is corrupt for this sample (stated 16.82% against 45.31% implied by
+  its own weights; the rest of the batch agrees to within ~0.7 points, and
+  post-ADF is consistent for every row). Cellulose (post-ADF − post-ADL) and
+  lignin (post-ADL) don't use the bad cell. But "probably fine per a traced
+  calculation" isn't the standard for a deposit, so a human confirms.
+  **Also worth acting on separately: the hemicellulose is recoverable.**
+  Recomputing post-NDF from the weights gives ~12.8%, unremarkable for this
+  batch (range up to 39.3%) — fixing that one cell restores the measurement
+  instead of losing it.
 - **`phenolics_relative_error`** — **2 samples.** The TPC sheets report a
   mean GAE and an SD over their own duplicate/triplicate measures, so this
   asks whether the assay agreed with itself — something no
@@ -124,8 +140,11 @@ What runs, and what it found on the 2026-09-23 run (2376 spectra):
   is suspect. The FF blank gained **+0.62% at the NDF step** (0.5669 →
   0.5704 g) and the OD blank **+0.11% at ADL**. Both sit below the 1% bad-data
   threshold in common use, so neither batch is condemned — but the FF gain is
-  worth knowing about, since 23 samples share that batch. If a future batch
-  breaches the threshold, the flag propagates to every sample in it.
+  worth knowing about, since 23 samples share that batch. **Propagation is
+  batch-wide and verified**: tested at a 0.5% threshold, the FF batch
+  breaches and all 23 of its samples get flagged. Whether 1% is the right
+  cut — or whether any gain at all should condemn a batch — is a threshold
+  decision, and FF turns on the moment it drops below 0.62%.
   Requires `AnkomExtract.R` to have written
   `derived/ankom/ankom_blanks_mill_test.csv` — that script previously
   discarded the BLANK rows, throwing away the only batch-level quality
