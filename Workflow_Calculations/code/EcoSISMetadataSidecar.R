@@ -218,6 +218,29 @@ ecosis_sidecar <- spec_meta %>%
     affiliation       = "University of Wisconsin-Madison, Forest and Wildlife Ecology"
   )
 
+# --- resolve duplicate-scanned spectra ----------------------------------
+# 7 sample x treatment combinations were scanned twice about a month apart
+# (5 Sample_IDs: 0020, 0028, 0034, 0037, 0059), giving 42 replicate-level
+# duplicates. `SpectralPredictR.R` keeps the LATER scan and drops the
+# earlier one -- confirmed with Zach 2026-09-15 as the right call for all 7
+# cases -- so its output carries 2376 spectra. This script was not applying
+# the same rule, which left the sidecar at 2418 rows for 2376 spectra:
+# two metadata rows per affected spectrum, differing only in
+# measurement_datetime. That makes `spectra` a non-unique key and gives
+# anyone joining the sidecar to the spectral files 42 spurious duplicate
+# rows. Found 2026-09-23 while wiring up the QC checks.
+n_before <- nrow(ecosis_sidecar)
+
+ecosis_sidecar <- ecosis_sidecar %>%
+  group_by(spectra) %>%
+  slice_max(measurement_datetime, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  arrange(sample_name, dry_treatment, mill_treatment, replicate)
+
+cat(sprintf("Duplicate-scan resolution: %d rows -> %d (kept the later scan per spectrum)\n",
+           n_before, nrow(ecosis_sidecar)))
+stopifnot(!any(duplicated(ecosis_sidecar$spectra)))
+
 write.csv(ecosis_sidecar, file.path(out_dir, "spectral_metadata_sidecar.csv"), row.names = FALSE)
 
 cat(sprintf("Wrote %d rows to %s\n", nrow(ecosis_sidecar),

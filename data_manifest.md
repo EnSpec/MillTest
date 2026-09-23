@@ -18,7 +18,7 @@ users, not the project's own scope history.
 
 | File | Size | What it is |
 |---|---|---|
-| `Mill24_RawSpec.csv` | 58M | Raw ASD spectra, all samples x treatments x replicates. The base of every spectral analysis in the manuscript. |
+| `Mill24_RawSpec.csv` | 58M | ASD spectra, all samples x treatments x replicates. The base of every spectral analysis in the manuscript. **Correction 2026-09-23: despite the filename, these are already jump-corrected, not raw.** `R(1000) == R(1001)` and `R(1800) == R(1801)` exactly in 100% of spectra, and those are the only two exactly-equal adjacent band pairs in all 2151 bands — the signature of a boundary-matching splice correction. Worth stating plainly in the deposit README so nobody treats this file as uncorrected input; anyone who needs genuinely uncorrected spectra has to go back to `DrySpec/*.asd`. |
 | `field_data/sample_info.csv` | 10K | Canonical per-sample metadata: Sample_ID, Species_Code, Species, Type, coordinates, fresh/dry mass, water content, chlorophyll (Chl1-5), sampling date. |
 | `ChemResults/Brookside.csv` | 54K | Observed wet chemistry (full element panel — N, P, Mg, K, Ca, S, B, Fe, Mn, Cu, Zn, Al, Na) from Brookside Labs — OD + 20-mesh material only. Ground truth for the manuscript's N/Ca RMSE/NRMSE comparison. **Not a Mill Test file in origin** (confirmed 2026-09-17): it's a running multi-project lab submission log — BIOSCAPE/ABOVE/MONGOLIA/LSNP24/LNG24 samples share the same file, some repeated hundreds of times as a bulk project label. New script `Workflow_Calculations/code/BrooksideExtract.R` filters to the 60 `MILL24_*` rows, converts everything to a consistent mg/g (below-detection "< X" values floored to half the detection limit, matching the convention in `WisTraits/Code/hytraits_data_create.R`) → `derived/brookside/brookside_mill_test.csv`, now also joined into the EcoSIS sidecar (see below). Raw file stays in the deposit zip as backup/provenance. |
 | `particle_size/data/full/**/*.csv` | 2.1M | LS 13320 particle-size-analyzer exports, one per sample x treatment (64 files covering the real 22-individual study set). **Resolved 2026-09-15**: the raw Beckman Coulter LS instrument-export format (metadata blocks + a `[SampleStats]` section with pre-computed moments) is the correct, intended format — matches what Zach's own script has always read via fixed row-slice indices; `ParticleStat.R` rewritten to parse it by label lookup instead. Two files (`MILL24_0002_SIXT...`, `MILL24_0014_BALL...`) have an internal `GroupID` that doesn't match their filename — confirmed with Zach this is a rename-after-export artifact (he renamed the output file rather than redo the ~10min measurement), not bad data; the script now trusts the filename and logs the mismatch as a `GroupID_mismatch` provenance column rather than excluding the file. All 64 files included; ready for deposit. |
@@ -46,7 +46,200 @@ same numbers used in the manuscript.
 | `spectralpredictr/SpectralPredictR_VN_jumpcorrected_spectra.csv` | 93M | same script — `spectrolab::normalize()` output. **Not actually used downstream within SpectralPredictR.R itself** (see CLAUDE.md FLAG), but `DataJoin.R` reads it. |
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | same script — 5 nm resampled, vector-normalized |
 | `BootstrappedData/` | **169M** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
-| `derived/ecosis/spectral_metadata_sidecar.csv` | ~1M | `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — the per-spectrum EcoSIS metadata sidecar (2418 rows, 66 columns). **Updated 2026-09-17**: now also carries per-sample x mill-treatment particle-size moments (`particle_size_mean_um`/`_variance`/`_skew`/`_kurtosis`); per-sample x dry-treatment isotope (`d13C`/`d15N`/`carbon_mg_g`/`nitrogen_IRMS_mg_g`), TPC (`phenolics_mg_g`/`_sd`), ANKOM (`hemicellulose_mg_g`/`cellulose_mg_g`/`lignin_recal_mg_g`), and fat-assay (`oil_content_mg_g`/`oil_mass_mg`) values; the full per-sample Brookside elemental panel (`nitrogen_mg_g` through `sodium_mg_g`, 13 elements); per-sample chlorophyll (`chlorophyll_1`-`5`); and per-sample leaf traits (`fresh_mass_g`/`dry_mass_g`/`water_content`/`leaf_area_cm2`/`lma_g_m2`) — see "Not used by this manuscript's analyses" below for where each is cleaned from. **Renamed 2026-09-17 (Henry)**: `carbon_pct`/`nitrogen_pct`/`oil_content_pct` → `carbon_mg_g`/`nitrogen_IRMS_mg_g`/`oil_content_mg_g`, converting all three to mg/g for unit consistency with the rest of the deposit ("IRMS" distinguishes this elemental-analyzer-derived %N from Brookside's separately-assayed `nitrogen_mg_g`). **Added 2026-09-17**: `leaf_area_cm2` (from `field_data/Mill24_LMA.xlsx` via new script `LeafAreaExtract.R`) and `lma_g_m2` (= `dry_mass_g` / `leaf_area_cm2` × 10000), joined at the Sample_ID level like the other tree-level fields. Populated only where each source has coverage (particle size: 22 samples, isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8, Brookside: 60, chlorophyll: 62, fresh/dry mass + water content: 52, leaf area/LMA: 52), NA elsewhere (expected, not a join bug). Still pending the controlled-vocabulary check noted in CLAUDE.md before calling this final. |
+| `derived/ecosis/spectral_metadata_sidecar.csv` | ~1M | `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — the per-spectrum EcoSIS metadata sidecar (**2376 rows**, 66 columns). **Fixed 2026-09-23**: was 2418 rows for only 2376 unique spectra. 7 sample x treatment combinations were scanned twice about a month apart (5 Sample_IDs: 0020, 0028, 0034, 0037, 0059 = 42 replicate-level duplicates); `SpectralPredictR.R` keeps the later scan (confirmed with Zach 2026-09-15 as correct for all 7), but this script wasn't applying the same rule, so `spectra` was not a unique key and joining the sidecar to any spectral file produced 42 spurious duplicate rows. Now deduplicated to the later scan per spectrum, with an assertion so it can't regress. **Updated 2026-09-17**: now also carries per-sample x mill-treatment particle-size moments (`particle_size_mean_um`/`_variance`/`_skew`/`_kurtosis`); per-sample x dry-treatment isotope (`d13C`/`d15N`/`carbon_mg_g`/`nitrogen_IRMS_mg_g`), TPC (`phenolics_mg_g`/`_sd`), ANKOM (`hemicellulose_mg_g`/`cellulose_mg_g`/`lignin_recal_mg_g`), and fat-assay (`oil_content_mg_g`/`oil_mass_mg`) values; the full per-sample Brookside elemental panel (`nitrogen_mg_g` through `sodium_mg_g`, 13 elements); per-sample chlorophyll (`chlorophyll_1`-`5`); and per-sample leaf traits (`fresh_mass_g`/`dry_mass_g`/`water_content`/`leaf_area_cm2`/`lma_g_m2`) — see "Not used by this manuscript's analyses" below for where each is cleaned from. **Renamed 2026-09-17 (Henry)**: `carbon_pct`/`nitrogen_pct`/`oil_content_pct` → `carbon_mg_g`/`nitrogen_IRMS_mg_g`/`oil_content_mg_g`, converting all three to mg/g for unit consistency with the rest of the deposit ("IRMS" distinguishes this elemental-analyzer-derived %N from Brookside's separately-assayed `nitrogen_mg_g`). **Added 2026-09-17**: `leaf_area_cm2` (from `field_data/Mill24_LMA.xlsx` via new script `LeafAreaExtract.R`) and `lma_g_m2` (= `dry_mass_g` / `leaf_area_cm2` × 10000), joined at the Sample_ID level like the other tree-level fields. Populated only where each source has coverage (particle size: 22 samples, isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8, Brookside: 60, chlorophyll: 62, fresh/dry mass + water content: 52, leaf area/LMA: 52), NA elsewhere (expected, not a join bug). Still pending the controlled-vocabulary check noted in CLAUDE.md before calling this final. |
+
+## Data quality checks — flag columns that ship with the deposit
+
+**New 2026-09-22.** First implementation of the project-wide QC standard
+(see CLAUDE.md "Data QC standard"): hold this data to DAAC-level QC even
+though this deposit isn't NASA-funded or DAAC-bound. The shared,
+project-agnostic checks live in a separate repo,
+[`EnSpec/enspec-qc`](https://github.com/EnSpec/enspec-qc); everything
+data-dependent (grouping variable per trait, bounds, thresholds) lives in
+`Workflow_Calculations/code/qc_config_milltest.R`, committed here because
+it's part of this deposit's provenance.
+
+**Flag-only, with two exceptions** (Henry, 2026-09-20 / 2026-09-23). Every
+check writes a flag table; flags are broadcast to the per-spectrum grain and
+carried into the deposit as two columns (`quality_flag`,
+`n_checks_flagged`). Two checks remove rather than flag, by two *different*
+mechanisms — the distinction matters:
+
+- `spectral_band_threshold` (R350 >= 0.9) drops the **whole spectrum row**,
+  because such a scan isn't a measurement of the sample at all. Removes
+  nothing on the current data (max R350 here is 0.13).
+- `trait_physical_bounds` NA's the **offending value only**, keeping the row,
+  because the rest of that sample's measurements are fine. Drops exactly one
+  value on the current data: `MILL24_0035` FF `hemicellulose_mg_g`.
+
+Everything removed is written to `removal_log.csv` with its value, the bound
+it violated, and the date.
+
+**Physical bounds and literature bounds are separate checks, on purpose**
+(Henry, 2026-09-23). Only physically impossible values are removal-eligible;
+a literature/TRY range only ever flags, because this lab works with diverse
+material and a true value outside TRY's compiled range isn't surprising. The
+config enforces this with a guard rather than a comment. The practical
+payoff is that a reader can tell the two apart in the outputs.
+
+**Read flag counts at the sample level, not the row level.** Flags are
+broadcast to the per-spectrum grain, so one bad per-sample chemistry value
+becomes 18–36 rows. `qc_check_summary.csv` reports both `n_flagged` (rows)
+and `n_distinct_units` (samples); the second is the one that means
+something. An early version of this section quoted 2772 literature-bound
+flags, which was ~96 real sample × trait problems wearing a big number.
+
+| File | Size | Produced by |
+|---|---|---|
+| `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `quality_flag` / `n_checks_flagged`. **Decided 2026-09-23 (Henry): ship this ALONGSIDE the bare sidecar, not instead of it** — and explain the distinction in the deposit README, so a user knows the flagged version is the same data plus advisory columns, not a different or filtered dataset. |
+| `derived/qc/qc_check_summary.csv` | 1.5K | same — one row per check, with how many rows it flagged. The short QC report. |
+| `derived/qc/qc_quality_flag_by_spectrum.csv` | ~180K | same — per-spectrum flag reasons, joinable to any other spectral file by `spectra`. |
+| `derived/qc/*_flags.csv` | ~550K total | same — one table per check, carrying the offending value, the group median/bound it was compared against, and the deviation. 38 tables in the current run. |
+| `derived/qc/removal_log.csv` | small | same — what the removal policy actually removed, and why. Empty on the current run (0 spectra removed); present regardless so "nothing was removed" is an explicit, checkable statement rather than an absent file. |
+| `derived/qc/spectral_jump_correction_status.csv` | small | same — per splice point, the share of spectra with an exact `R(splice) == R(splice+1)` match, i.e. whether the file has already been jump-corrected. Documents *why* the splice-jump check was skipped. |
+
+What runs, and what it found on the 2026-09-23 run (2376 spectra):
+
+- **`trait_physical_bounds`** — **1 sample, and it is DROPPED.**
+  `MILL24_0035` FF carried `hemicellulose_mg_g = -157.1`, which is
+  impossible. The raw workbook has `Perc_Hemiceullose = -15.71%` and
+  `AnkomExtract.R` converts it faithfully, so **the error is in the source
+  data, not the pipeline**. In the ANKOM sequential method hemicellulose =
+  NDF − ADF, so a negative means ADF came out larger than NDF; the same
+  sample's OD run is a normal +17.30%. Per Henry (2026-09-23), completely
+  impossible values are dropped and logged, so this value is NA'd in the
+  deposit copy and recorded in `removal_log.csv`. That sample's cellulose,
+  lignin and OD hemicellulose are untouched. Nothing else in the dataset is
+  physically impossible.
+- **`ankom_fiber_cascade`** — **2 values flagged.** ANKOM is a sequential
+  wash (NDF → ADF on the NDF residue → ADL on the ADF residue), so a failure
+  at an early stage puts everything derived after it in doubt regardless of
+  whether the later value looks sane. `MILL24_0035` FF's cellulose and lignin
+  are flagged as downstream of its failed hemicellulose. **Flagged, not
+  removed**, and the evidence says they're probably fine: hemicellulose =
+  `Perc_Remaining_Post_NDF − Perc_Remaining_Post_ADF`, and only the first of
+  those is corrupt for this sample (stated 16.82% against 45.31% implied by
+  its own weights; the rest of the batch agrees to within ~0.7 points, and
+  post-ADF is consistent for every row). Cellulose (post-ADF − post-ADL) and
+  lignin (post-ADL) don't use the bad cell. But "probably fine per a traced
+  calculation" isn't the standard for a deposit, so a human confirms.
+  **Also worth acting on separately: the hemicellulose is recoverable.**
+  Recomputing post-NDF from the weights gives ~12.8%, unremarkable for this
+  batch (range up to 39.3%) — fixing that one cell restores the measurement
+  instead of losing it.
+- **`phenolics_relative_error`** — **2 samples.** The TPC sheets report a
+  mean GAE and an SD over their own duplicate/triplicate measures, so this
+  asks whether the assay agreed with itself — something no
+  comparison-to-other-samples check can see. Flags CV > 10%: `MILL24_0010`
+  OD (12.5%) and `MILL24_0014` OD (11.7%). The rest of the distribution is
+  tight (median 0.25%).
+- **`ankom_blank_drift`** — **2 step-gains recorded, no batch condemned.**
+  Each ANKOM batch carries a blank bag through the same NDF → ADF → ADL wash
+  sequence; it should only ever lose weight, and a gain means it leaked and
+  took on material, implying it shed sample material too and the whole batch
+  is suspect. The FF blank gained **+0.62% at the NDF step** (0.5669 →
+  0.5704 g) and the OD blank **+0.11% at ADL**. Both sit below the 1% bad-data
+  threshold in common use, so neither batch is condemned — but the FF gain is
+  worth knowing about, since 23 samples share that batch. **Propagation is
+  batch-wide and verified**: tested at a 0.5% threshold, the FF batch
+  breaches and all 23 of its samples get flagged. Whether 1% is the right
+  cut — or whether any gain at all should condemn a batch — is a threshold
+  decision, and FF turns on the moment it drops below 0.62%.
+  Requires `AnkomExtract.R` to have written
+  `derived/ankom/ankom_blanks_mill_test.csv` — that script previously
+  discarded the BLANK rows, throwing away the only batch-level quality
+  information these workbooks carry.
+- **`trait_literature_bounds`** — 47 samples, all advisory, and **44 of them
+  are phenolics alone**. Bounds are TRY 6.0 (Kattge et al. 2020) for the
+  elements and chemistry, Wright et al. 2004 for LMA, Craine et al. 2015 for
+  d15N. Three things to know:
+  1. **The phenolics upper bound is suspect and needs a call.** It flags
+     44/60 samples, values 33.5–108.6 mg/g against a TRY max of 33.23. That
+     pattern says wrong bound, not bad data: our TPC is Folin-Ciocalteu
+     gallic-acid-equivalents on oak and conifer foliage, where 50–150 mg/g
+     GAE is unremarkable, while TRY's "Leaf phenols content" is a small trait
+     (n=1225) that may not be assay-comparable. Left in place deliberately
+     rather than widened on a guess. Resolve it and literature flags drop to
+     3 samples.
+  2. **Micronutrient lower bounds were dropped** (B, Fe, Mn, Cu, Zn, Al —
+     upper bounds kept). TRY's compiled *minimum* is the wrong statistic for
+     a trace-element floor: it's the smallest published value, not a
+     plausibility limit, and since `BrooksideExtract.R` floors
+     below-detection reads to half the detection limit, those land below
+     TRY's minimum *by construction*. That alone was generating 48 spurious
+     sample-level flags (Al 33, Cu 10, Fe 5) which said nothing except
+     "below detection was below detection." "Unusually low" is a
+     distribution question, and the distribution checks already cover it.
+  3. Chlorophyll is a CCM-300 leaf-area measurement in mg/m², so its bounds
+     come from TRY's per-leaf-area chlorophyll trait filtered to
+     `UnitName == "g m-2"` — that trait pools true mass measurements with
+     unconvertible SPAD/CCI/FCI index readings, and the unfiltered range is
+     meaningless.
+- **Magnitude / decimal-shift and distribution flags** — robust, computed
+  within the grouping variable each trait actually varies over (species
+  for tree-level traits; species x drying treatment for the chemistry;
+  growth form x mill treatment for particle size).
+- **Leave-one-out bad-replicate check** — runs on the CCM-300 chlorophyll
+  reads, the one place in the derived data with genuine within-individual
+  instrument replication (5 leaves per tree, stored as 5 columns). Found 4
+  suspect reads, all failing low (ratio 0.16-0.49 vs. their own siblings),
+  consistent with the probe not seating on the leaf. Only one of the four
+  was also below the literature floor — the other three are only visible
+  against their own siblings.
+- **Spectral checks** — all run against `SpectralPredictR_raw_spectra.csv`
+  (jump-corrected, pre-normalization), **not** the 5nm resampled file, which
+  is vector-normalized and has no meaningful reflectance scale to threshold
+  against.
+  - *flat/extreme*: 0. *out-of-range reflectance*: 0.
+  - *`spectral_band_threshold`* (R350 >= 0.9, from the SHIFT dried-ground
+    DAAC product): 0. Mill Test's max R350 is 0.13, so there are no
+    accidental white-reference or empty-puck measurements in this dataset.
+  - *`spectral_group_outlier`*: **12 (0.6%)**, by spectral angle within the
+    6-replicate set (sample x mill x dry treatment). The reference is the
+    **medoid** — the real scan with the smallest summed angle to the others
+    — not a synthetic per-wavelength median (Henry, 2026-09-23: compare to
+    a spectrum somebody actually measured, so a flag can be gone back to
+    and looked at). The reference used is recorded per group as provenance.
+    **Threshold is an absolute angle, 0.75°, not a robust z-score.** With
+    only 6 scans per group a robust z computes its MAD on 5 angles, so the
+    scale estimate is mostly noise and a tightly-agreeing group flags a
+    perfectly good sibling for being slightly less tight; that approach
+    flagged 60 (2.5%). The observed within-group distribution here is
+    median 0.212°, 95th 0.518°, 99th 0.703°, max 1.277°, so 0.75° is a
+    conservative cut that matches "outliers should be rare in a controlled
+    system". A degree threshold also means the same thing across reruns and
+    projects, and is interpretable by a data user. One-sided throughout: a
+    small angle is good agreement, never a defect.
+  - *`spectral_pca_review`*: 28 flags for **manual review only**, never
+    removal — 25 at the within-sample level (a replicate far from its own
+    sample centroid) and 3 at the between-sample level (a sample far from
+    its species' centroid). The PCA is fit once across all spectra and both
+    levels measured in that shared space; top 5 PCs carry 98.8% of
+    variance.
+  - *`spectral_splice_jump`*: **skipped, by design.** It only means anything
+    on uncorrected spectra, and `qc_detect_jump_corrected()` confirms both
+    available CSVs are already corrected (exact `R(splice) == R(splice+1)`
+    in 100% of spectra at both 1000 and 1800 nm). Recorded in
+    `spectral_jump_correction_status.csv` rather than reported as a vacuous
+    all-clear. To actually run it, the uncorrected `DrySpec/*.asd` binaries
+    would need re-reading.
+
+Read the headline percentage carefully. A large share of spectra carry at
+least one flag, but that is mostly one suspect phenolics bound broadcast
+across 44 samples × 18 rows each. At the sample level: **1 physically
+impossible value** (the negative hemicellulose), 3 samples with genuinely
+low-but-plausible chemistry, 4 suspect chlorophyll replicate reads, 12
+spectral shape outliers out of 2376, and 44 samples hitting a phenolics
+bound that probably doesn't apply to our assay. Nothing was removed.
+`qc_check_summary.csv` — specifically its `n_distinct_units` column — is the
+honest view.
+
+**Still open before the deposit is final**: no confirmed literature range
+for `oil_content_mg_g` (TRY's lipid trait returned no usable rows) or
+`sodium_mg_g` (no TRY leaf-Na trait) — both have a physical 0-1000 mg/g
+ceiling only. Particle-size moments deliberately have no literature
+bounds (instrument output, not a trait with an independent plausible
+range).
 
 ## Collected but not used in the manuscript — Henry wants these deposited anyway
 
