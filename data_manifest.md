@@ -73,14 +73,18 @@ the projects adopting this pattern.
 a literature/TRY range only ever flags, because this lab works with diverse
 material and a true value outside TRY's compiled range isn't surprising. The
 config enforces this with a guard rather than a comment. The practical
-payoff is that a reader can tell the two apart in the outputs — and the
-headline result is that **`trait_physical_bounds` flags 0 rows**: nothing in
-this dataset is physically impossible. Everything under
-`trait_literature_bounds` is advisory.
+payoff is that a reader can tell the two apart in the outputs.
+
+**Read flag counts at the sample level, not the row level.** Flags are
+broadcast to the per-spectrum grain, so one bad per-sample chemistry value
+becomes 18–36 rows. `qc_check_summary.csv` reports both `n_flagged` (rows)
+and `n_distinct_units` (samples); the second is the one that means
+something. An early version of this section quoted 2772 literature-bound
+flags, which was ~96 real sample × trait problems wearing a big number.
 
 | File | Size | Produced by |
 |---|---|---|
-| `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `quality_flag` / `n_checks_flagged`. **This is the file to deposit** in place of the bare sidecar, or alongside it. |
+| `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `quality_flag` / `n_checks_flagged`. **Decided 2026-09-23 (Henry): ship this ALONGSIDE the bare sidecar, not instead of it** — and explain the distinction in the deposit README, so a user knows the flagged version is the same data plus advisory columns, not a different or filtered dataset. |
 | `derived/qc/qc_check_summary.csv` | 1.5K | same — one row per check, with how many rows it flagged. The short QC report. |
 | `derived/qc/qc_quality_flag_by_spectrum.csv` | ~180K | same — per-spectrum flag reasons, joinable to any other spectral file by `spectra`. |
 | `derived/qc/*_flags.csv` | ~550K total | same — one table per check, carrying the offending value, the group median/bound it was compared against, and the deviation. 38 tables in the current run. |
@@ -89,18 +93,40 @@ this dataset is physically impossible. Everything under
 
 What runs, and what it found on the 2026-09-23 run (2376 spectra):
 
-- **`trait_physical_bounds`** — 0 flags. No physically impossible values.
-- **`trait_literature_bounds`** — 2772 flags, all advisory. Bounds are TRY
-  6.0 (Kattge et al. 2020) for the elements and
-  chemistry, Wright et al. 2004 for LMA, Craine et al. 2015 for d15N. Two things worth knowing when reading these: (1) the Brookside
-  trace-element flags (Al, Cu, Fe) are almost all legitimate
-  below-detection values that `BrooksideExtract.R` floors to half the
-  detection limit — floored, not measured, which is exactly what a reader
-  should be told; (2) chlorophyll is a CCM-300 leaf-area measurement in
-  mg/m^2, so its bounds come from TRY's per-leaf-area chlorophyll trait
-  filtered to `UnitName == "g m-2"` — that trait pools true mass
-  measurements with unconvertible SPAD/CCI/FCI index readings, and the
-  unfiltered range is meaningless.
+- **`trait_physical_bounds`** — **1 sample.** `MILL24_0035` FF carries
+  `hemicellulose_mg_g = -157.1`, which is impossible. The raw workbook has
+  `Perc_Hemiceullose = -15.71%` and `AnkomExtract.R` converts it faithfully,
+  so **the error is in the source data, not the pipeline**. In the ANKOM
+  sequential method hemicellulose = NDF − ADF, so a negative means ADF came
+  out larger than NDF; the same sample's OD run is a normal +17.30%.
+  **Needs a decision before deposit** — NA out that one value, or ship it
+  flagged. Nothing else in the dataset is physically impossible.
+- **`trait_literature_bounds`** — 47 samples, all advisory, and **44 of them
+  are phenolics alone**. Bounds are TRY 6.0 (Kattge et al. 2020) for the
+  elements and chemistry, Wright et al. 2004 for LMA, Craine et al. 2015 for
+  d15N. Three things to know:
+  1. **The phenolics upper bound is suspect and needs a call.** It flags
+     44/60 samples, values 33.5–108.6 mg/g against a TRY max of 33.23. That
+     pattern says wrong bound, not bad data: our TPC is Folin-Ciocalteu
+     gallic-acid-equivalents on oak and conifer foliage, where 50–150 mg/g
+     GAE is unremarkable, while TRY's "Leaf phenols content" is a small trait
+     (n=1225) that may not be assay-comparable. Left in place deliberately
+     rather than widened on a guess. Resolve it and literature flags drop to
+     3 samples.
+  2. **Micronutrient lower bounds were dropped** (B, Fe, Mn, Cu, Zn, Al —
+     upper bounds kept). TRY's compiled *minimum* is the wrong statistic for
+     a trace-element floor: it's the smallest published value, not a
+     plausibility limit, and since `BrooksideExtract.R` floors
+     below-detection reads to half the detection limit, those land below
+     TRY's minimum *by construction*. That alone was generating 48 spurious
+     sample-level flags (Al 33, Cu 10, Fe 5) which said nothing except
+     "below detection was below detection." "Unusually low" is a
+     distribution question, and the distribution checks already cover it.
+  3. Chlorophyll is a CCM-300 leaf-area measurement in mg/m², so its bounds
+     come from TRY's per-leaf-area chlorophyll trait filtered to
+     `UnitName == "g m-2"` — that trait pools true mass measurements with
+     unconvertible SPAD/CCI/FCI index readings, and the unfiltered range is
+     meaningless.
 - **Magnitude / decimal-shift and distribution flags** — robust, computed
   within the grouping variable each trait actually varies over (species
   for tree-level traits; species x drying treatment for the chemistry;
@@ -120,14 +146,22 @@ What runs, and what it found on the 2026-09-23 run (2376 spectra):
   - *`spectral_band_threshold`* (R350 >= 0.9, from the SHIFT dried-ground
     DAAC product): 0. Mill Test's max R350 is 0.13, so there are no
     accidental white-reference or empty-puck measurements in this dataset.
-  - *`spectral_group_outlier`*: 60 (2.5%), by spectral angle within the
+  - *`spectral_group_outlier`*: **12 (0.6%)**, by spectral angle within the
     6-replicate set (sample x mill x dry treatment). The reference is the
     **medoid** — the real scan with the smallest summed angle to the others
     — not a synthetic per-wavelength median (Henry, 2026-09-23: compare to
     a spectrum somebody actually measured, so a flag can be gone back to
-    and looked at). The reference used is recorded per group in the flag
-    table as provenance. One-sided: only scans *further* from the reference
-    than typical are flagged.
+    and looked at). The reference used is recorded per group as provenance.
+    **Threshold is an absolute angle, 0.75°, not a robust z-score.** With
+    only 6 scans per group a robust z computes its MAD on 5 angles, so the
+    scale estimate is mostly noise and a tightly-agreeing group flags a
+    perfectly good sibling for being slightly less tight; that approach
+    flagged 60 (2.5%). The observed within-group distribution here is
+    median 0.212°, 95th 0.518°, 99th 0.703°, max 1.277°, so 0.75° is a
+    conservative cut that matches "outliers should be rare in a controlled
+    system". A degree threshold also means the same thing across reruns and
+    projects, and is interpretable by a data user. One-sided throughout: a
+    small angle is good agreement, never a defect.
   - *`spectral_pca_review`*: 28 flags for **manual review only**, never
     removal — 25 at the within-sample level (a replicate far from its own
     sample centroid) and 3 at the between-sample level (a sample far from
@@ -142,13 +176,15 @@ What runs, and what it found on the 2026-09-23 run (2376 spectra):
     all-clear. To actually run it, the uncorrected `DrySpec/*.asd` binaries
     would need re-reading.
 
-~86% of spectra carry at least one flag, which reads alarmingly high until
-you account for two things: the broadcast (a single sample-level chemistry
-flag attaches to all 36 spectra for that sample — 3 mill x 2 dry x 6
-replicates), and the fact that essentially all of it is
-`trait_literature_bounds`, which is advisory by policy. Nothing in the
-dataset is physically impossible and nothing was removed.
-`qc_check_summary.csv` is the honest per-check view.
+Read the headline percentage carefully. A large share of spectra carry at
+least one flag, but that is mostly one suspect phenolics bound broadcast
+across 44 samples × 18 rows each. At the sample level: **1 physically
+impossible value** (the negative hemicellulose), 3 samples with genuinely
+low-but-plausible chemistry, 4 suspect chlorophyll replicate reads, 12
+spectral shape outliers out of 2376, and 44 samples hitting a phenolics
+bound that probably doesn't apply to our assay. Nothing was removed.
+`qc_check_summary.csv` — specifically its `n_distinct_units` column — is the
+honest view.
 
 **Still open before the deposit is final**: no confirmed literature range
 for `oil_content_mg_g` (TRY's lipid trait returned no usable rows) or

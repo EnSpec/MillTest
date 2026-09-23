@@ -224,8 +224,11 @@ flag_list[["spectral_out_of_range"]] <- qc_write_log(range_flags, out_dir, "spec
 # which "the probe wasn't on the sample right for this one scan" would show
 # up against its own siblings.
 group_outlier_flags <- qc_spectral_group_outliers(spec_joined, "measure_id", wave_cols, spec_id_cols,
-                                                   min_n = 4, z_threshold = thresholds$spectral_angle_z,
-                                                   reference = spectral_angle_reference)
+                                                   min_n = 4,
+                                                   reference = spectral_angle_reference,
+                                                   method = thresholds$spectral_angle_method,
+                                                   angle_max_deg = thresholds$spectral_angle_max_deg,
+                                                   z_threshold = thresholds$spectral_angle_z)
 flag_list[["spectral_group_outlier"]] <- qc_write_log(group_outlier_flags, out_dir, "spectral_group_outlier")
 
 # Single-band check (R350 >= 0.9 -> not a real sample measure). This is the
@@ -268,7 +271,11 @@ flag_list[["spectral_pca_review"]] <- qc_write_log(pca_flags, out_dir, "spectral
 # 3. COMBINED REPORT
 # =========================================================================
 message("\n== Building combined QC report ==")
-check_counts <- qc_build_report(flag_list, out_dir = out_dir)
+# unit_col = sample_name so the summary reports distinct samples affected
+# alongside raw flag rows. Without it the row counts badly overstate things:
+# one bad per-sample chemistry value broadcasts to 18-36 spectrum rows, which
+# is how ~96 real sample x trait problems presented as 2772 flags.
+check_counts <- qc_build_report(flag_list, out_dir = out_dir, unit_col = "sample_name")
 
 # ---- Broadcast every check's flags down to the per-spectrum grain -------
 # The deposit's actual row grain is one row per spectrum (the sidecar).

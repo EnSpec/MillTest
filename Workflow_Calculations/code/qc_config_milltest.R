@@ -32,6 +32,50 @@ physical_bounds <- tribble(
   "water_content",  0,      0.98,   "physical", "= (Fresh_mass - Dry_mass) / Fresh_mass (field_data provenance, confirmed 2026-09-22); bounded to [0,1) by construction -- can't be negative or reach 1 (would require zero dry mass)"
 )
 
+# A negative concentration, mass or area is impossible (Henry, 2026-09-23).
+# Built programmatically rather than typed out 30 times, with the carve-out
+# stated explicitly so it stays auditable: ISOTOPE RATIOS ARE LEGITIMATELY
+# NEGATIVE (d13C runs about -25 to -30 permil, d15N can take either sign),
+# so they get no zero floor and keep their signed literature ranges.
+#
+# This gap is how a real error hid. MILL24_0035 FF carries
+# hemicellulose_mg_g = -157.1 (raw workbook: Perc_Hemiceullose = -15.71%,
+# faithfully converted by AnkomExtract.R -- the error is in the source data,
+# not the script). In the ANKOM sequential method hemicellulose = NDF - ADF,
+# so a negative means ADF came out larger than NDF, which shouldn't happen;
+# the same sample's OD run is a normal +17.30%. Until now that value only
+# showed up as a *literature* flag, which badly understates it: it isn't
+# outside a compiled range, it's impossible.
+nonnegative_traits <- c(
+  # chemistry, per dry mass
+  "carbon_mg_g", "nitrogen_IRMS_mg_g", "phenolics_mg_g", "phenolics_sd",
+  "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g",
+  "oil_content_mg_g", "oil_mass_mg",
+  # Brookside elemental panel
+  "nitrogen_mg_g", "phosphorus_mg_g", "magnesium_mg_g", "potassium_mg_g",
+  "calcium_mg_g", "sulfur_mg_g", "boron_mg_g", "iron_mg_g", "manganese_mg_g",
+  "copper_mg_g", "zinc_mg_g", "aluminum_mg_g", "sodium_mg_g",
+  # masses, areas, derived structure
+  "fresh_mass_g", "dry_mass_g", "leaf_area_cm2", "lma_g_m2",
+  "chlorophyll_1", "chlorophyll_2", "chlorophyll_3", "chlorophyll_4", "chlorophyll_5",
+  # particle size: a mean diameter and a variance can't be negative. Skew is
+  # signed by definition, and kurtosis is deliberately left alone --
+  # ParticleStat.R reports it on the Pearson scale, but asserting a floor
+  # there would be over-claiming.
+  "particle_size_mean_um", "particle_size_variance"
+)
+
+physical_bounds <- bind_rows(
+  physical_bounds,
+  tibble(
+    trait  = nonnegative_traits,
+    lower  = 0,
+    upper  = NA_real_,
+    source = "physical",
+    reason = "a concentration, mass or area cannot be negative (isotope ratios excluded -- legitimately signed)"
+  )
+)
+
 # Literature-sourced bounds, all in mg/g dry mass unless noted. Pulled
 # 2026-09-22 from TRY 6.0 (Kattge et al. 2020; download
 # /Volumes/Enspec/users/henry/TRY_Aug_2026/51461.txt) via
@@ -48,17 +92,40 @@ literature_bounds <- tribble(
   "calcium_mg_g",        0.40,      84.0,     "TRY (Kattge et al. 2020)",             "Leaf Ca content per dry mass",
   "magnesium_mg_g",      0.277,     16.45,    "TRY (Kattge et al. 2020)",             "Leaf Mg content per dry mass",
   "sulfur_mg_g",         0.447,     17.95,    "TRY (Kattge et al. 2020)",             "Leaf S content per dry mass",
-  "boron_mg_g",          0.0063,    0.399,    "TRY (Kattge et al. 2020)",             "Leaf B content per dry mass",
-  "iron_mg_g",           0.0086,    2.273,    "TRY (Kattge et al. 2020)",             "Leaf Fe content per dry mass",
-  "manganese_mg_g",      0.0021,    12.2,     "TRY (Kattge et al. 2020)",             "Leaf Mn content per dry mass",
-  "copper_mg_g",         0.00112,   0.1209,   "TRY (Kattge et al. 2020)",             "Leaf Cu content per dry mass",
-  "zinc_mg_g",           0.0022,    0.798,    "TRY (Kattge et al. 2020)",             "Leaf Zn content per dry mass",
-  "aluminum_mg_g",       0.004,     40.70,    "TRY (Kattge et al. 2020)",             "Leaf Al content per dry mass",
+  # Micronutrients: UPPER BOUND ONLY, deliberately (2026-09-23). TRY's
+  # compiled *minimum* is the wrong statistic for a lower bound on a trace
+  # element -- it's the smallest value anyone happened to publish, not a
+  # plausibility floor, and there's no reason a leaf can't hold less Al than
+  # the least-Al leaf in the literature. Worse, Brookside reports these as
+  # ppm with a detection limit, and BrooksideExtract.R floors below-detection
+  # reads to half that limit, which lands *below* TRY's minimum by
+  # construction. Using TRY's min here generated 1728 of 2772 literature
+  # flags (Al 33 samples, Cu 10, Fe 5) purely from below-detection values
+  # being below-detection. "Unusually low" is a distribution question, and
+  # the distribution/magnitude checks already cover it. Upper bounds stay --
+  # those are meaningful, since a very high value suggests contamination or a
+  # unit error.
+  "boron_mg_g",          NA,        0.399,    "TRY (Kattge et al. 2020), upper only", "Leaf B content per dry mass; lower bound dropped -- see note above",
+  "iron_mg_g",           NA,        2.273,    "TRY (Kattge et al. 2020), upper only", "Leaf Fe content per dry mass; lower bound dropped -- see note above",
+  "manganese_mg_g",      NA,        12.2,     "TRY (Kattge et al. 2020), upper only", "Leaf Mn content per dry mass; lower bound dropped -- see note above",
+  "copper_mg_g",         NA,        0.1209,   "TRY (Kattge et al. 2020), upper only", "Leaf Cu content per dry mass; lower bound dropped -- see note above",
+  "zinc_mg_g",           NA,        0.798,    "TRY (Kattge et al. 2020), upper only", "Leaf Zn content per dry mass; lower bound dropped -- see note above",
+  "aluminum_mg_g",       NA,        40.70,    "TRY (Kattge et al. 2020), upper only", "Leaf Al content per dry mass; lower bound dropped -- see note above",
   "carbon_mg_g",         18.7,      657.9,    "TRY (Kattge et al. 2020)",             "Leaf C content per dry mass",
   "cellulose_mg_g",      62.9,      426.2,    "TRY (Kattge et al. 2020)",             "Leaf cellulose content per dry mass",
   "hemicellulose_mg_g",  87.1,      450.0,    "TRY (Kattge et al. 2020)",             "Leaf hemicellulose content per dry mass",
   "lignin_recal_mg_g",   13.7,      429.0,    "TRY (Kattge et al. 2020)",             "Leaf lignin content per dry mass",
-  "phenolics_mg_g",      0.066,     33.23,    "TRY (Kattge et al. 2020)",             "Leaf phenolics content per dry mass",
+  # PHENOLICS UPPER BOUND -- NEEDS HENRY'S CALL (flagged 2026-09-23).
+  # This bound flags 44 of 60 samples, values running 33.5-108.6 mg/g against
+  # a TRY max of 33.23. That pattern says "wrong bound", not "bad data": our
+  # TPC is Folin-Ciocalteu gallic-acid-equivalents on oak and conifer foliage,
+  # where tannin-rich material in the 50-150 mg/g GAE range is unremarkable,
+  # whereas TRY's "Leaf phenols content per leaf dry mass" is a small trait
+  # (n = 1225) that may not be assay-comparable. Deliberately NOT widened on
+  # my own judgement -- that's a domain call. Options: drop the upper bound
+  # like the micronutrients, substitute a GAE-specific literature range, or
+  # keep it and accept the flags as advisory.
+  "phenolics_mg_g",      0.066,     33.23,    "TRY (Kattge et al. 2020) -- SUSPECT, see note", "Leaf phenolics content per dry mass; flags 44/60 samples, likely not assay-comparable to Folin-Ciocalteu GAE",
   "d13C",                -39,       -9.8,     "TRY (Kattge et al. 2020)",             "Leaf delta13C signature",
   "d15N",                -14.4,     21.4,     "Craine et al. 2015, Plant and Soil",   "matches GCFR trait QC precedent (Workflow3_Outlier_Assess.R)",
   "lma_g_m2",            14,        1500,     "Wright et al. 2004, Nature",           "matches GCFR trait QC precedent (Workflow3_Outlier_Assess.R)",
@@ -215,7 +282,23 @@ thresholds <- list(
   spectral_flat_range = 0.03,  # qc_spectral_flat
   spectral_flat_low   = 0.05,
   spectral_flat_high  = 0.95,
-  spectral_angle_z    = 3,     # qc_spectral_group_outliers
+
+  # qc_spectral_group_outliers. Switched from robust-z to an ABSOLUTE angle
+  # threshold in degrees (2026-09-23). A robust z within a 6-scan group
+  # computes its MAD on 5 angles, so the scale estimate is mostly noise, and
+  # a set whose scans agree unusually tightly flags a perfectly good sibling
+  # just for being slightly less tight. The angle itself is on a fixed,
+  # physically interpretable scale, so a degree threshold means the same
+  # thing across reruns and across projects -- and it's something a data user
+  # can actually reason about.
+  #
+  # Set from the observed distribution on this dataset (1980 non-reference
+  # scans): median 0.212 deg, 95th 0.518, 99th 0.703, max 1.277. At 0.75 deg
+  # this flags 12 scans (0.61%), which fits "outliers should be rare in a
+  # controlled system" far better than robust-z > 3 did (60 scans, 3.0%).
+  spectral_angle_method   = "absolute",
+  spectral_angle_max_deg  = 0.75,
+  spectral_angle_z        = 3,   # only used if method is switched to "robust_z"
 
   # PCA review flags (qc_spectral_pca_flags). Review-only, never removal.
   # k and the thresholds live here rather than in the function, per the
