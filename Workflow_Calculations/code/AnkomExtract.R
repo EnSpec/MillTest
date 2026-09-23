@@ -52,3 +52,34 @@ write.csv(ankom_mill_test, file.path(out_dir, "ankom_mill_test.csv"), row.names 
 cat(sprintf("Wrote %d rows (%d unique Mill Test samples) to %s\n",
            nrow(ankom_mill_test), n_distinct(ankom_mill_test$Sample_ID),
            file.path(out_dir, "ankom_mill_test.csv")))
+
+# --- blank bags: keep them, they are the batch's QC control -----------------
+# The BLANK row is an empty bag carried through the same NDF -> ADF -> ADL
+# wash sequence as the batch's real samples. It should only ever LOSE weight;
+# a gain means the bag leaked and took on material, which means it was
+# shedding sample material too and every sample in that batch is suspect
+# (Henry, 2026-09-23 -- ~1% gain is a threshold in common use elsewhere).
+# Filtering these out and keeping only the sample rows threw away the one
+# piece of batch-level quality information these workbooks carry.
+read_ankom_blanks <- function(dry_treat) {
+  path <- file.path(data_root, "ChemResults",
+                    sprintf("Ankom_Primary_Template_Zach_Mill%s.xlsx", dry_treat))
+  read_excel(path) %>%
+    filter(str_detect(str_to_upper(SampleID), "BLANK")) %>%
+    transmute(
+      batch              = dry_treat,
+      dry_treatment      = dry_treat,
+      bag_number         = as.character(Bag_Number),
+      bag_tare_g         = as.double(BagTare),
+      weight_after_ndf_g = as.double(Weigth_After_NDF),
+      weight_after_adf_g = as.double(Weight_After_ADF),
+      weight_after_adl_g = as.double(Weight_After_ADL)
+    )
+}
+
+ankom_blanks <- bind_rows(read_ankom_blanks("FF"), read_ankom_blanks("OD"))
+
+write.csv(ankom_blanks, file.path(out_dir, "ankom_blanks_mill_test.csv"), row.names = FALSE)
+
+cat(sprintf("Wrote %d blank-bag rows to %s\n", nrow(ankom_blanks),
+           file.path(out_dir, "ankom_blanks_mill_test.csv")))

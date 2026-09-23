@@ -146,7 +146,61 @@ for (set_name in names(replicate_column_sets)) {
   }
 }
 
-# ---- 1d. Covariation checks --------------------------------------------
+# ---- 1d. Assay-specific checks (Henry, 2026-09-23) ---------------------
+
+# Phenolics replicate precision. Uses the TPC sheets' own reported SD across
+# their duplicate/triplicate measures (carried through by TPCExtract.R), so
+# this asks "did the assay agree with itself", which no other check here can.
+# Dedup to sample x dry treatment -- the grain TPC was actually run at.
+tpc_level <- sidecar %>%
+  select(sample_name, species_code, dry_treatment, phenolics_mg_g, phenolics_sd) %>%
+  distinct()
+
+phenolics_cv_flags <- qc_relative_error(
+  tpc_level, value_col = "phenolics_mg_g", error_col = "phenolics_sd",
+  id_cols = c("sample_name", "species_code", "dry_treatment"),
+  max_cv = thresholds$phenolics_max_cv
+)
+flag_list[["phenolics_relative_error"]] <- qc_write_log(phenolics_cv_flags, out_dir, "phenolics_relative_error")
+
+# ANKOM blank-bag leak check. Batch-level: a leaking blank implicates every
+# sample processed alongside it, so a flagged batch is propagated to all of
+# that batch's samples below rather than left as a standalone note.
+ankom_blanks_path <- file.path(data_root, "derived", "ankom", "ankom_blanks_mill_test.csv")
+if (file.exists(ankom_blanks_path)) {
+  ankom_blanks <- read.csv(ankom_blanks_path)
+
+  blank_drift <- qc_blank_drift(
+    ankom_blanks,
+    id_cols = c("batch", "bag_number"),
+    tare_col = "bag_tare_g",
+    step_cols = c("weight_after_ndf_g", "weight_after_adf_g", "weight_after_adl_g"),
+    increase_threshold = thresholds$ankom_blank_increase
+  )
+  qc_write_log(blank_drift, out_dir, "ankom_blank_drift")
+  print(blank_drift)
+
+  # Propagate only batches that breach the threshold. A blank that gains a
+  # trace amount is worth recording (above) but shouldn't condemn 23 samples.
+  bad_batches <- blank_drift %>% filter(exceeds_threshold) %>% pull(batch) %>% unique()
+  if (length(bad_batches) > 0) {
+    batch_flags <- sidecar %>%
+      filter(dry_treatment %in% bad_batches, !is.na(hemicellulose_mg_g)) %>%
+      distinct(sample_name, species_code, dry_treatment) %>%
+      mutate(batch = dry_treatment,
+             reason = "ANKOM blank bag gained weight beyond threshold -- batch contamination suspected",
+             check = "ankom_batch_contamination")
+    flag_list[["ankom_batch_contamination"]] <-
+      qc_write_log(batch_flags, out_dir, "ankom_batch_contamination")
+  } else {
+    message(sprintf("  ankom_blank_drift: %d blank/step gains recorded, none above the %.0f%% threshold -- no batch condemned",
+                    nrow(blank_drift), 100 * thresholds$ankom_blank_increase))
+  }
+} else {
+  message("  ankom_blank_drift: SKIPPED -- run AnkomExtract.R to produce ankom_blanks_mill_test.csv")
+}
+
+# ---- 1e. Covariation checks --------------------------------------------
 tree_dedup <- sidecar %>% distinct(sample_name, species_code, growth_form,
                                    nitrogen_IRMS_mg_g, carbon_mg_g, lma_g_m2)
 
@@ -318,11 +372,23 @@ quality_flag_by_spectrum <- sidecar %>%
 write.csv(quality_flag_by_spectrum, file.path(out_dir, "qc_quality_flag_by_spectrum.csv"), row.names = FALSE)
 
 # ---- Removals (only checks named in removal_policy) ---------------------
-# Spectrum-level removal drops the whole row rather than NA-ing a column:
-# an R350 >= 0.9 scan isn't a sample measurement at all, so there's no
-# salvageable value in it. Trait-level removals would use
-# enspec-qc::qc_apply_removals() instead; this deposit has none.
-removal_spectra <- unique(unlist(lapply(removal_policy, function(check_name) {
+# Two DIFFERENT mechanisms, and conflating them is destructive: trait flag
+# tables carry a `spectra` column too (for traceability), so treating every
+# removal check as spectrum-level would delete whole spectrum rows because
+# one chemistry value was bad. One negative hemicellulose would have taken
+# 18 perfectly good spectra with it.
+#
+#   spectrum-level - the scan itself isn't a measurement of anything
+#     (R350 >= 0.9 means the puck or white reference got read). Drop the row.
+#   trait-level    - one value is impossible but the scan is fine. NA that
+#     value only, keep the row.
+spectrum_removal_checks <- intersect(
+  removal_policy,
+  c("spectral_band_threshold", "spectral_flat", "spectral_out_of_range")
+)
+trait_removal_checks <- intersect(removal_policy, c("trait_physical_bounds"))
+
+removal_spectra <- unique(unlist(lapply(spectrum_removal_checks, function(check_name) {
   df <- flag_list[[check_name]]
   if (is.null(df) || nrow(df) == 0 || !"spectra" %in% names(df)) return(character(0))
   df$spectra
@@ -335,8 +401,30 @@ removal_log <- bind_rows(lapply(removal_policy, function(check_name) {
 }))
 write.csv(removal_log, file.path(out_dir, "removal_log.csv"), row.names = FALSE)
 
+# Trait-level removals: NA the offending VALUE, not the row -- the rest of
+# that sample's measurements are fine. Applies to physically impossible
+# values only (Henry, 2026-09-23: "any negative values should be dropped and
+# logged"). Keyed on spectra so every broadcast copy of the bad value is
+# cleared, not just the first.
+trait_removals <- bind_rows(flag_list[trait_removal_checks])
+
+if (nrow(trait_removals) > 0) {
+  for (tr in unique(trait_removals$trait_flagged)) {
+    if (!tr %in% names(sidecar)) next
+    hit <- trait_removals$spectra[trait_removals$trait_flagged == tr]
+    n_before <- sum(!is.na(sidecar[[tr]]))
+    sidecar[[tr]][sidecar$spectra %in% hit] <- NA
+    message(sprintf("  removed %s: %d values NA'd (%d -> %d non-missing)",
+                    tr, length(unique(hit)), n_before, sum(!is.na(sidecar[[tr]]))))
+  }
+  message(sprintf("Trait values dropped as physically impossible: %d rows across %d trait(s)",
+                  nrow(trait_removals), length(unique(trait_removals$trait_flagged))))
+} else {
+  message("No physically impossible trait values to drop.")
+}
+
 message(sprintf("\nRemoval policy: %s", paste(removal_policy, collapse = ", ")))
-message(sprintf("Spectra removed: %d (logged to removal_log.csv)", length(removal_spectra)))
+message(sprintf("Spectra removed (whole rows): %d", length(removal_spectra)))
 
 # Deposit-ready sidecar copy with the flag columns carried in, alongside
 # (not replacing) the original spectral_metadata_sidecar.csv -- per the QC
@@ -370,5 +458,7 @@ flag_reason_counts <- quality_flag_by_spectrum %>%
 print(head(flag_reason_counts, 30))
 
 message(sprintf("\nDone. Flag CSVs + qc_check_summary.csv + qc_quality_flag_by_spectrum.csv + spectral_metadata_sidecar_with_qc_flags.csv written to %s", out_dir))
-message(sprintf("Policy: flag-only except %s (see removal_log.csv). %d spectra removed on this run.",
-                paste(removal_policy, collapse = ", "), length(removal_spectra)))
+message(sprintf("Policy: flag-only except %s (see removal_log.csv).",
+                paste(removal_policy, collapse = ", ")))
+message(sprintf("  spectra dropped (whole rows): %d | trait values NA'd: %d",
+                length(removal_spectra), nrow(trait_removals)))

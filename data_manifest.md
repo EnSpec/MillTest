@@ -59,14 +59,21 @@ data-dependent (grouping variable per trait, bounds, thresholds) lives in
 `Workflow_Calculations/code/qc_config_milltest.R`, committed here because
 it's part of this deposit's provenance.
 
-**Flag-only, with one exception** (Henry, 2026-09-20 / 2026-09-23). Every
+**Flag-only, with two exceptions** (Henry, 2026-09-20 / 2026-09-23). Every
 check writes a flag table; flags are broadcast to the per-spectrum grain and
 carried into the deposit as two columns (`quality_flag`,
-`n_checks_flagged`). The single exception is `spectral_band_threshold`
-(R350 >= 0.9), which removes and logs, because such a spectrum isn't a
-sample measurement at all. On the current data that removes **nothing** —
-Mill Test's maximum R350 is 0.13 — but the policy is set for reruns and for
-the projects adopting this pattern.
+`n_checks_flagged`). Two checks remove rather than flag, by two *different*
+mechanisms — the distinction matters:
+
+- `spectral_band_threshold` (R350 >= 0.9) drops the **whole spectrum row**,
+  because such a scan isn't a measurement of the sample at all. Removes
+  nothing on the current data (max R350 here is 0.13).
+- `trait_physical_bounds` NA's the **offending value only**, keeping the row,
+  because the rest of that sample's measurements are fine. Drops exactly one
+  value on the current data: `MILL24_0035` FF `hemicellulose_mg_g`.
+
+Everything removed is written to `removal_log.csv` with its value, the bound
+it violated, and the date.
 
 **Physical bounds and literature bounds are separate checks, on purpose**
 (Henry, 2026-09-23). Only physically impossible values are removal-eligible;
@@ -93,14 +100,36 @@ flags, which was ~96 real sample × trait problems wearing a big number.
 
 What runs, and what it found on the 2026-09-23 run (2376 spectra):
 
-- **`trait_physical_bounds`** — **1 sample.** `MILL24_0035` FF carries
-  `hemicellulose_mg_g = -157.1`, which is impossible. The raw workbook has
-  `Perc_Hemiceullose = -15.71%` and `AnkomExtract.R` converts it faithfully,
-  so **the error is in the source data, not the pipeline**. In the ANKOM
-  sequential method hemicellulose = NDF − ADF, so a negative means ADF came
-  out larger than NDF; the same sample's OD run is a normal +17.30%.
-  **Needs a decision before deposit** — NA out that one value, or ship it
-  flagged. Nothing else in the dataset is physically impossible.
+- **`trait_physical_bounds`** — **1 sample, and it is DROPPED.**
+  `MILL24_0035` FF carried `hemicellulose_mg_g = -157.1`, which is
+  impossible. The raw workbook has `Perc_Hemiceullose = -15.71%` and
+  `AnkomExtract.R` converts it faithfully, so **the error is in the source
+  data, not the pipeline**. In the ANKOM sequential method hemicellulose =
+  NDF − ADF, so a negative means ADF came out larger than NDF; the same
+  sample's OD run is a normal +17.30%. Per Henry (2026-09-23), completely
+  impossible values are dropped and logged, so this value is NA'd in the
+  deposit copy and recorded in `removal_log.csv`. That sample's cellulose,
+  lignin and OD hemicellulose are untouched. Nothing else in the dataset is
+  physically impossible.
+- **`phenolics_relative_error`** — **2 samples.** The TPC sheets report a
+  mean GAE and an SD over their own duplicate/triplicate measures, so this
+  asks whether the assay agreed with itself — something no
+  comparison-to-other-samples check can see. Flags CV > 10%: `MILL24_0010`
+  OD (12.5%) and `MILL24_0014` OD (11.7%). The rest of the distribution is
+  tight (median 0.25%).
+- **`ankom_blank_drift`** — **2 step-gains recorded, no batch condemned.**
+  Each ANKOM batch carries a blank bag through the same NDF → ADF → ADL wash
+  sequence; it should only ever lose weight, and a gain means it leaked and
+  took on material, implying it shed sample material too and the whole batch
+  is suspect. The FF blank gained **+0.62% at the NDF step** (0.5669 →
+  0.5704 g) and the OD blank **+0.11% at ADL**. Both sit below the 1% bad-data
+  threshold in common use, so neither batch is condemned — but the FF gain is
+  worth knowing about, since 23 samples share that batch. If a future batch
+  breaches the threshold, the flag propagates to every sample in it.
+  Requires `AnkomExtract.R` to have written
+  `derived/ankom/ankom_blanks_mill_test.csv` — that script previously
+  discarded the BLANK rows, throwing away the only batch-level quality
+  information these workbooks carry.
 - **`trait_literature_bounds`** — 47 samples, all advisory, and **44 of them
   are phenolics alone**. Bounds are TRY 6.0 (Kattge et al. 2020) for the
   elements and chemistry, Wright et al. 2004 for LMA, Craine et al. 2015 for

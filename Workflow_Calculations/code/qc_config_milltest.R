@@ -305,7 +305,25 @@ thresholds <- list(
   # per-project-config rule.
   pca_n_pc            = 5,
   pca_within_z        = 3,     # replicate vs. its own sample centroid
-  pca_between_z       = 3      # sample centroid vs. its group centroid
+  pca_between_z       = 3,     # sample centroid vs. its group centroid
+
+  # Assay-specific checks (Henry, 2026-09-23).
+  #
+  # Phenolics: the TPC sheets report a mean GAE and an SD across their own
+  # duplicate/triplicate measures, carried through by TPCExtract.R as
+  # phenolics_mg_g / phenolics_sd. A CV above ~10% means the assay disagreed
+  # with itself badly enough not to trust that result, independent of whether
+  # the value looks plausible. Observed distribution here: median 0.25%,
+  # 99th percentile 11.2%, max 12.5% -- so 10% flags 2 of 120, appropriately
+  # rare.
+  phenolics_max_cv    = 0.10,
+
+  # ANKOM blank bag: an empty bag carried through the same washes should only
+  # lose weight. A gain means it leaked and took on material, so it was
+  # shedding sample material too and the whole batch is suspect. 1% is a
+  # threshold in common use elsewhere; any gain at all is reported regardless,
+  # since a blank has no business gaining weight.
+  ankom_blank_increase = 0.01
 )
 
 # ---- Spectral-angle reference -------------------------------------------
@@ -336,16 +354,23 @@ spectral_band_check <- list(
 # ---- Removal policy ---------------------------------------------------
 # Named checks whose flags become REMOVALS. Everything else is flag-only.
 #
-# `spectral_band_threshold` is the one exception to this deposit's
-# flag-only default (Henry, 2026-09-23): an R350 above 0.9 can't be a real
-# sample measure, so those spectra are dropped and logged rather than
-# shipped with a flag. On the current data this removes nothing -- Mill
-# Test has zero such spectra -- but the policy is set correctly for reruns
-# and for the projects that adopt this pattern.
+# Two exceptions to this deposit's flag-only default, both Henry 2026-09-23:
 #
-# Trait checks stay flag-only. `trait_literature_bounds` must NEVER appear
-# here; the guard below enforces that rather than trusting a comment.
-removal_policy <- c("spectral_band_threshold")
+#   spectral_band_threshold - an R350 above 0.9 can't be a real sample
+#     measure, so those spectra are dropped and logged. Removes nothing on
+#     the current data (Mill Test has none) but the policy is correct for
+#     reruns and for adopting projects.
+#
+#   trait_physical_bounds - "any negative values (completely impossible)
+#     should be dropped and logged." A physically impossible value isn't
+#     salvageable, so the value is NA'd (not the whole row -- the rest of
+#     that sample's data is fine) and written to removal_log.csv. On the
+#     current data this drops exactly one value: MILL24_0035 FF
+#     hemicellulose_mg_g = -157.1.
+#
+# Trait *literature* bounds stay flag-only and must NEVER appear here; the
+# guard below enforces that rather than trusting a comment.
+removal_policy <- c("spectral_band_threshold", "trait_physical_bounds")
 
 stopifnot(
   "literature bounds are flag-only and must not drive removals (CLAUDE.md, Henry 2026-09-23)" =
