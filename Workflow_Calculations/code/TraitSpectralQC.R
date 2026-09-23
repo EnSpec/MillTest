@@ -68,8 +68,14 @@ message("== Trait QC ==")
 trait_id_cols <- c("spectra", "sample_name", "species_code", "growth_form",
                    "mill_treatment", "dry_treatment", "replicate")
 
-hard_bounds_flags <- qc_hard_bounds(sidecar, bounds_table, trait_id_cols)
-flag_list[["hard_bounds"]] <- qc_write_log(hard_bounds_flags, out_dir, "trait_hard_bounds")
+# Run as two separate checks so the outputs keep the distinction a reader
+# actually needs: "physically impossible" vs "outside the compiled literature
+# range". Only the first is ever removal-eligible (see qc_config_milltest.R).
+physical_flags <- qc_hard_bounds(sidecar, removable_bounds, trait_id_cols)
+flag_list[["trait_physical_bounds"]] <- qc_write_log(physical_flags, out_dir, "trait_physical_bounds")
+
+literature_flags <- qc_hard_bounds(sidecar, flag_only_bounds, trait_id_cols)
+flag_list[["trait_literature_bounds"]] <- qc_write_log(literature_flags, out_dir, "trait_literature_bounds")
 
 # ---- 1b. Magnitude-shift + distribution checks, per trait category -----
 # Dedup to the level each trait category actually varies at (see
@@ -178,11 +184,27 @@ names(spec_raw)[1] <- "spectra"
 
 wave_cols <- grep("^X[0-9]+$", names(spec_raw), value = TRUE)
 
+# `spectra` must be a unique key on both sides or this join silently
+# multiplies rows, which quietly corrupts every downstream group statistic
+# (a 6-replicate set reads as 7, medoid selection sees a phantom scan, PCA
+# centroids get dragged). This is not hypothetical: the sidecar carried 42
+# duplicated spectra ids until 2026-09-23 because it wasn't applying
+# SpectralPredictR.R's keep-the-later-scan rule. Assert rather than trust.
+stopifnot(
+  "sidecar `spectra` must be unique -- rerun EcoSISMetadataSidecar.R" =
+    !any(duplicated(sidecar$spectra)),
+  "spectral file `spectra` must be unique" =
+    !any(duplicated(spec_raw$spectra))
+)
+
 spec_joined <- spec_raw %>%
   left_join(sidecar %>% select(spectra, sample_name, species_code, growth_form,
                                mill_treatment, dry_treatment, replicate, measure_id),
            by = "spectra") %>%
   filter(!is.na(sample_name))  # guard against any join misses
+
+stopifnot("join changed row count -- check key uniqueness" =
+            nrow(spec_joined) <= nrow(spec_raw))
 
 spec_id_cols <- c("spectra", "sample_name", "species_code", "growth_form",
                   "mill_treatment", "dry_treatment", "replicate")
@@ -202,8 +224,45 @@ flag_list[["spectral_out_of_range"]] <- qc_write_log(range_flags, out_dir, "spec
 # which "the probe wasn't on the sample right for this one scan" would show
 # up against its own siblings.
 group_outlier_flags <- qc_spectral_group_outliers(spec_joined, "measure_id", wave_cols, spec_id_cols,
-                                                   min_n = 4, z_threshold = thresholds$spectral_angle_z)
+                                                   min_n = 4, z_threshold = thresholds$spectral_angle_z,
+                                                   reference = spectral_angle_reference)
 flag_list[["spectral_group_outlier"]] <- qc_write_log(group_outlier_flags, out_dir, "spectral_group_outlier")
+
+# Single-band check (R350 >= 0.9 -> not a real sample measure). This is the
+# one check in this deposit whose flags become removals -- see removal_policy.
+band_flags <- qc_spectral_band_threshold(
+  spec_joined, wave_cols, spec_id_cols,
+  band = spectral_band_check$band,
+  upper = spectral_band_check$upper,
+  lower = spectral_band_check$lower
+)
+flag_list[["spectral_band_threshold"]] <- qc_write_log(band_flags, out_dir, "spectral_band_threshold")
+
+# Splice-jump check: only meaningful on spectra that have NOT been jump
+# corrected, because the correction removes the evidence by construction.
+# Report whether the file we're reading is already corrected rather than
+# silently producing a vacuous all-clear.
+jump_status <- qc_detect_jump_corrected(spec_joined, wave_cols, splices = qc_splice_defaults("asd"))
+write.csv(jump_status, file.path(out_dir, "spectral_jump_correction_status.csv"), row.names = FALSE)
+print(jump_status)
+if (any(jump_status$likely_corrected)) {
+  message("  spectral_splice_jump: SKIPPED -- these spectra are already jump-corrected.")
+  message("  (To run this check, read the uncorrected DrySpec/*.asd binaries; see CLAUDE.md.)")
+} else {
+  splice_flags <- qc_spectral_splice_jump(spec_joined, wave_cols, spec_id_cols,
+                                          splices = qc_splice_defaults("asd"))
+  flag_list[["spectral_splice_jump"]] <- qc_write_log(splice_flags, out_dir, "spectral_splice_jump")
+}
+
+# PCA review flags, two levels, one global fit. Review-only by policy.
+pca_flags <- qc_spectral_pca_flags(
+  spec_joined, wave_cols, spec_id_cols,
+  sample_var = "measure_id", group_var = "species_code",
+  n_pc = thresholds$pca_n_pc,
+  within_z = thresholds$pca_within_z,
+  between_z = thresholds$pca_between_z
+)
+flag_list[["spectral_pca_review"]] <- qc_write_log(pca_flags, out_dir, "spectral_pca_review")
 
 # =========================================================================
 # 3. COMBINED REPORT
@@ -251,14 +310,47 @@ quality_flag_by_spectrum <- sidecar %>%
 
 write.csv(quality_flag_by_spectrum, file.path(out_dir, "qc_quality_flag_by_spectrum.csv"), row.names = FALSE)
 
+# ---- Removals (only checks named in removal_policy) ---------------------
+# Spectrum-level removal drops the whole row rather than NA-ing a column:
+# an R350 >= 0.9 scan isn't a sample measurement at all, so there's no
+# salvageable value in it. Trait-level removals would use
+# enspec-qc::qc_apply_removals() instead; this deposit has none.
+removal_spectra <- unique(unlist(lapply(removal_policy, function(check_name) {
+  df <- flag_list[[check_name]]
+  if (is.null(df) || nrow(df) == 0 || !"spectra" %in% names(df)) return(character(0))
+  df$spectra
+})))
+
+removal_log <- bind_rows(lapply(removal_policy, function(check_name) {
+  df <- flag_list[[check_name]]
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  df %>% mutate(removed_by = check_name, removal_date = Sys.Date())
+}))
+write.csv(removal_log, file.path(out_dir, "removal_log.csv"), row.names = FALSE)
+
+message(sprintf("\nRemoval policy: %s", paste(removal_policy, collapse = ", ")))
+message(sprintf("Spectra removed: %d (logged to removal_log.csv)", length(removal_spectra)))
+
 # Deposit-ready sidecar copy with the flag columns carried in, alongside
 # (not replacing) the original spectral_metadata_sidecar.csv -- per the QC
 # standard's "flag columns carried into the deposit" output contract.
 sidecar_with_flags <- sidecar %>%
   select(-species_dry_treatment, -growth_form_mill_treatment, -measure_id) %>%
-  left_join(quality_flag_by_spectrum, by = "spectra")
+  left_join(quality_flag_by_spectrum, by = "spectra") %>%
+  filter(!spectra %in% removal_spectra)
 
 write.csv(sidecar_with_flags, file.path(out_dir, "spectral_metadata_sidecar_with_qc_flags.csv"), row.names = FALSE)
+
+# If anything was removed, the spectra themselves have to be filtered to
+# match, or the deposit would ship a spectrum with no metadata row.
+if (length(removal_spectra) > 0) {
+  spec_clean <- spec_raw %>% filter(!spectra %in% removal_spectra)
+  write.csv(spec_clean, file.path(out_dir, "spectra_qc_cleaned.csv"), row.names = FALSE)
+  message(sprintf("Wrote spectra_qc_cleaned.csv (%d of %d spectra retained)",
+                  nrow(spec_clean), nrow(spec_raw)))
+} else {
+  message("No spectra removed -- the existing spectral files need no filtering.")
+}
 
 n_flagged_spectra <- sum(quality_flag_by_spectrum$quality_flag != "")
 message(sprintf("\n%d of %d spectra (%.1f%%) carry at least one QC flag",
@@ -271,4 +363,5 @@ flag_reason_counts <- quality_flag_by_spectrum %>%
 print(head(flag_reason_counts, 30))
 
 message(sprintf("\nDone. Flag CSVs + qc_check_summary.csv + qc_quality_flag_by_spectrum.csv + spectral_metadata_sidecar_with_qc_flags.csv written to %s", out_dir))
-message("Flag-only run (per 2026-09-20 policy) -- no values were removed from any deposit file.")
+message(sprintf("Policy: flag-only except %s (see removal_log.csv). %d spectra removed on this run.",
+                paste(removal_policy, collapse = ", "), length(removal_spectra)))

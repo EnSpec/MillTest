@@ -8,10 +8,15 @@
 # decision in CLAUDE.md: shared checks live in enspec-qc, everything
 # data-dependent -- grouping variable, bounds, thresholds -- lives here).
 #
-# For this deposit: FLAG-ONLY, TIMEBOXED (Henry, 2026-09-20). Nothing in
-# `bounds_table` below triggers a removal; qc_apply_removals() is not
-# called anywhere in TraitSpectralQC.R. `removal_policy` is kept as an
-# explicit empty vector so that's a visible decision, not an omission.
+# For this deposit: FLAG-ONLY by default (timeboxed, Henry 2026-09-20), with
+# exactly one exception added 2026-09-23 -- spectra with R350 >= 0.9 are
+# removed and logged, because that can't be a real sample measure. See
+# `removal_policy` below; every other check only flags.
+#
+# Trait bounds are split into `removable_bounds` (physically impossible
+# values) and `flag_only_bounds` (literature/TRY ranges). That split is
+# load-bearing, not cosmetic: literature ranges never drive removals
+# (Henry, 2026-09-23), and the guard next to `removal_policy` enforces it.
 #
 ##################################################
 
@@ -115,7 +120,15 @@ placeholder_ceiling_bounds <- tribble(
   "sodium_mg_g",      0,      1000,   "physical", "mg/g of dry mass cannot exceed 1000 (100%); TODO literature bound, no TRY leaf-Na trait found"
 )
 
-bounds_table <- bind_rows(physical_bounds, literature_bounds, placeholder_ceiling_bounds)
+# Two SEPARATE bounds tables, run as two separate checks -- not one combined
+# sweep (Henry, 2026-09-23). Only physically impossible values are ever
+# candidates for removal; a literature/TRY range is flag-only, always,
+# because this lab works with very diverse material and a true value outside
+# TRY's compiled range isn't surprising. Keeping them structurally separate
+# means a future project can't enable removals and silently take the
+# literature bounds along with them -- see the removal_policy guard below.
+removable_bounds <- bind_rows(physical_bounds, placeholder_ceiling_bounds)
+flag_only_bounds <- literature_bounds
 
 # ---- Grouping variables per trait category -----------------------------
 # Henry, 2026-09-22: tree-level physical traits are swept at the species
@@ -202,11 +215,59 @@ thresholds <- list(
   spectral_flat_range = 0.03,  # qc_spectral_flat
   spectral_flat_low   = 0.05,
   spectral_flat_high  = 0.95,
-  spectral_angle_z    = 3      # qc_spectral_group_outliers
+  spectral_angle_z    = 3,     # qc_spectral_group_outliers
+
+  # PCA review flags (qc_spectral_pca_flags). Review-only, never removal.
+  # k and the thresholds live here rather than in the function, per the
+  # per-project-config rule.
+  pca_n_pc            = 5,
+  pca_within_z        = 3,     # replicate vs. its own sample centroid
+  pca_between_z       = 3      # sample centroid vs. its group centroid
+)
+
+# ---- Spectral-angle reference -------------------------------------------
+# "medoid" (the real scan with the smallest summed angle to the others) or
+# "albedo" (the real scan closest to the group's median brightness).
+# Mill Test is dry powder measured in a press apparatus -- a controlled
+# setting where the replicates should be near-identical and the question is
+# which one doesn't belong -- so medoid (Henry, 2026-09-23). Albedo is
+# expected to matter more for fresh-leaf and field spectroscopy.
+spectral_angle_reference <- "medoid"
+
+# ---- Single-band threshold ----------------------------------------------
+# From the SHIFT dried-ground reflectance DAAC product, which removes every
+# spectrum with R350 >= 0.9 as "abnormal reflectance". Dry leaf powder sits
+# far below that at 350 nm (Mill Test's own max is 0.13, checked
+# 2026-09-22), so a value that high means the white reference panel or an
+# empty puck got measured instead of the sample.
+#
+# `band` can be a single wavelength or c(lower, upper) to average over a
+# range -- averaging 350-400 is worth considering, since 350 nm alone is the
+# noisiest band on an ASD. Left at the single band to match SHIFT exactly.
+spectral_band_check <- list(
+  band  = 350,
+  upper = 0.9,
+  lower = NULL
 )
 
 # ---- Removal policy ---------------------------------------------------
-# Empty on purpose: everything in this deposit is flag-only per Henry's
-# 2026-09-20 decision. Revisit (name traits here) only if/when the project
-# moves off the timeboxed flag-only approach.
-removal_policy <- character(0)
+# Named checks whose flags become REMOVALS. Everything else is flag-only.
+#
+# `spectral_band_threshold` is the one exception to this deposit's
+# flag-only default (Henry, 2026-09-23): an R350 above 0.9 can't be a real
+# sample measure, so those spectra are dropped and logged rather than
+# shipped with a flag. On the current data this removes nothing -- Mill
+# Test has zero such spectra -- but the policy is set correctly for reruns
+# and for the projects that adopt this pattern.
+#
+# Trait checks stay flag-only. `trait_literature_bounds` must NEVER appear
+# here; the guard below enforces that rather than trusting a comment.
+removal_policy <- c("spectral_band_threshold")
+
+stopifnot(
+  "literature bounds are flag-only and must not drive removals (CLAUDE.md, Henry 2026-09-23)" =
+    !("trait_literature_bounds" %in% removal_policy),
+  "no literature-bound trait may be named in removal_policy" =
+    !any(flag_only_bounds$trait %in% removal_policy)
+)
+
