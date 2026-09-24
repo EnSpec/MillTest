@@ -46,7 +46,61 @@ same numbers used in the manuscript.
 | `spectralpredictr/SpectralPredictR_VN_jumpcorrected_spectra.csv` | 93M | same script — `spectrolab::normalize()` output. **Not actually used downstream within SpectralPredictR.R itself** (see CLAUDE.md FLAG), but `DataJoin.R` reads it. |
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | same script — 5 nm resampled, vector-normalized |
 | `BootstrappedData/` | **169M** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
-| `derived/ecosis/spectral_metadata_sidecar.csv` | ~1M | `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — the per-spectrum EcoSIS metadata sidecar (**2376 rows**, 66 columns). **Fixed 2026-09-23**: was 2418 rows for only 2376 unique spectra. 7 sample x treatment combinations were scanned twice about a month apart (5 Sample_IDs: 0020, 0028, 0034, 0037, 0059 = 42 replicate-level duplicates); `SpectralPredictR.R` keeps the later scan (confirmed with Zach 2026-09-15 as correct for all 7), but this script wasn't applying the same rule, so `spectra` was not a unique key and joining the sidecar to any spectral file produced 42 spurious duplicate rows. Now deduplicated to the later scan per spectrum, with an assertion so it can't regress. **Updated 2026-09-17**: now also carries per-sample x mill-treatment particle-size moments (`particle_size_mean_um`/`_variance`/`_skew`/`_kurtosis`); per-sample x dry-treatment isotope (`d13C`/`d15N`/`carbon_mg_g`/`nitrogen_IRMS_mg_g`), TPC (`phenolics_mg_g`/`_sd`), ANKOM (`hemicellulose_mg_g`/`cellulose_mg_g`/`lignin_recal_mg_g`), and fat-assay (`oil_content_mg_g`/`oil_mass_mg`) values; the full per-sample Brookside elemental panel (`nitrogen_mg_g` through `sodium_mg_g`, 13 elements); per-sample chlorophyll (`chlorophyll_1`-`5`); and per-sample leaf traits (`fresh_mass_g`/`dry_mass_g`/`water_content`/`leaf_area_cm2`/`lma_g_m2`) — see "Not used by this manuscript's analyses" below for where each is cleaned from. **Renamed 2026-09-17 (Henry)**: `carbon_pct`/`nitrogen_pct`/`oil_content_pct` → `carbon_mg_g`/`nitrogen_IRMS_mg_g`/`oil_content_mg_g`, converting all three to mg/g for unit consistency with the rest of the deposit ("IRMS" distinguishes this elemental-analyzer-derived %N from Brookside's separately-assayed `nitrogen_mg_g`). **Added 2026-09-17**: `leaf_area_cm2` (from `field_data/Mill24_LMA.xlsx` via new script `LeafAreaExtract.R`) and `lma_g_m2` (= `dry_mass_g` / `leaf_area_cm2` × 10000), joined at the Sample_ID level like the other tree-level fields. Populated only where each source has coverage (particle size: 22 samples, isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8, Brookside: 60, chlorophyll: 62, fresh/dry mass + water content: 52, leaf area/LMA: 52), NA elsewhere (expected, not a join bug). Still pending the controlled-vocabulary check noted in CLAUDE.md before calling this final. |
+| `derived/ecosis/spectral_metadata_sidecar.csv` | ~1M | `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — the per-spectrum EcoSIS metadata sidecar (**2376 rows**, 66 columns). **Fixed 2026-09-23**: was 2418 rows for only 2376 unique spectra. 7 sample x treatment combinations were scanned twice about a month apart (5 Sample_IDs: 0020, 0028, 0034, 0037, 0059 = 42 replicate-level duplicates); `SpectralPredictR.R` keeps the later scan (confirmed with Zach 2026-09-15 as correct for all 7), but this script wasn't applying the same rule, so `spectra` was not a unique key and joining the sidecar to any spectral file produced 42 spurious duplicate rows. Now deduplicated to the later scan per spectrum, with an assertion so it can't regress. **Updated 2026-09-17**: now also carries per-sample x mill-treatment particle-size moments (`particle_size_mean_um`/`_variance`/`_skew`/`_kurtosis`); per-sample x dry-treatment isotope (`d13C`/`d15N`/`carbon_mg_g`/`nitrogen_IRMS_mg_g`), TPC (`phenolics_mg_g`/`_sd`), ANKOM (`hemicellulose_mg_g`/`cellulose_mg_g`/`lignin_recal_mg_g`), and fat-assay (`oil_content_mg_g`/`oil_mass_mg`) values; the full per-sample Brookside elemental panel (`nitrogen_mg_g` through `sodium_mg_g`, 13 elements); per-sample chlorophyll (`chlorophyll_1`-`5`); and per-sample leaf traits (`fresh_mass_g`/`dry_mass_g`/`water_content`/`leaf_area_cm2`/`lma_g_m2`) — see "Not used by this manuscript's analyses" below for where each is cleaned from. **Renamed 2026-09-17 (Henry)**: `carbon_pct`/`nitrogen_pct`/`oil_content_pct` → `carbon_mg_g`/`nitrogen_IRMS_mg_g`/`oil_content_mg_g`, converting all three to mg/g for unit consistency with the rest of the deposit ("IRMS" distinguishes this elemental-analyzer-derived %N from Brookside's separately-assayed `nitrogen_mg_g`). **Added 2026-09-17**: `leaf_area_cm2` (from `field_data/Mill24_LMA.xlsx` via new script `LeafAreaExtract.R`) and `lma_g_m2` (= `dry_mass_g` / `leaf_area_cm2` × 10000), joined at the Sample_ID level like the other tree-level fields. Populated only where each source has coverage (particle size: 22 samples, isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8, Brookside: 60, chlorophyll: 62, fresh/dry mass + water content: 52, leaf area/LMA: 52), NA elsewhere (expected, not a join bug). **Added 2026-09-24**: `Workflow_Calculations/code/TaxonHarmonize.R` appends `scientific_name_wfo`/`scientific_name_authorship`/`family_wfo`/`taxonomic_status_wfo`/`wfo_taxon_id`/`wfo_backbone_version` — all 14 species resolved against the WFO static backbone (v.2026.6), all `Accepted`, all populated (no NAs). Now 2376 rows, **72 columns**. See "Taxon harmonization" below. Still pending the controlled-vocabulary check noted in CLAUDE.md before calling this final. |
+
+## Taxon harmonization — scientific authority for species names
+
+**New 2026-09-24.** Mill Test has only 14 species (11 tree species plus a
+forb and a graminoid), hand-entered in `field_data/sample_info.csv` as
+"Common Name (Scientific name)" strings. Small enough to be a real adopter of
+the shared harmonization module, not too small to bother: harmonizing against
+a named authority and being able to state which backbone version was used is
+a checkable claim a deposit can make, and 14 names is small enough that every
+result was reviewed by hand.
+
+`Workflow_Calculations/code/TaxonHarmonize.R` runs the shared functions in
+[`EnSpec/enspec-qc`](https://github.com/EnSpec/enspec-qc) (`taxon_harmonize.R`,
+`wfo_backbone.R`) against the World Flora Online static backbone
+(v.2026.6, `/Volumes/Enspec/users/henry/WFO_backbones/`). Runs **before**
+`TraitSpectralQC.R` and after `EcoSISMetadataSidecar.R`, whose output it
+annotates in place with `scientific_name_wfo`, `scientific_name_authorship`,
+`family_wfo`, `taxonomic_status_wfo`, `wfo_taxon_id`, and
+`wfo_backbone_version` (2376 rows x 72 columns, up from 66).
+
+**Result: all 14 species matched, all `Accepted`, one name changed.**
+`PHDE` was entered as *Phytolacca decandra* (American Pokeweed); WFO resolves
+that to its accepted name, *Phytolacca americana*. The entered name and the
+WFO name both ship in the deposit, so nothing is silently overwritten. The
+other 13 already matched their WFO-accepted name exactly (post-APG family
+placements now correctly recorded too — e.g. *Acer* under Sapindaceae, not
+the old Aceraceae; *Celtis* under Cannabaceae).
+
+**WFO backbone currency, checked and recorded, not silently trusted.**
+`wfo_backbone_check()` is offline-first by design — WFO publishes no
+machine-readable version index, and its download page's TLS chain fails to
+verify from this machine, so there is no reliable way to script "is this the
+newest version." The check always flags this explicitly rather than reporting
+a clean bill of health (`derived/taxonomy/wfo_backbone_flags.csv`):
+"v.2026.6 may be out of date -- currency was NOT verified against WFO."
+That flag ships with the deposit's QC outputs so a downstream user sees the
+same caveat.
+
+**A real bug caught and fixed while building this**: the backbone file is
+tab-separated but its fields are genuinely double-quoted (e.g.
+`"Schoenoxiphium ecklonii var. ecklonii"`). The first read used
+`data.table::fread(..., quote = "")`, disabling quote parsing entirely, which
+left literal quote marks in every name and made all 14 species look
+"changed" by harmonization rather than just the 1 that actually was. Caught
+because the wrong result was implausible (14 of 14 changing is not what
+"harmonization" should look like for common tree species), not because
+anything errored. Fixed by using default quote handling; re-run confirmed
+against the raw file with a direct read of the first 5 rows before trusting
+the full run.
+
+`derived/taxonomy/taxon_harmonized_mill_test.csv` is the standalone per-species
+table (one row per species, everything above plus `name_entered` and
+`name_changed`), included in the deposit as its own reference file alongside
+the sidecar.
 
 ## Data quality checks — flag columns that ship with the deposit
 
