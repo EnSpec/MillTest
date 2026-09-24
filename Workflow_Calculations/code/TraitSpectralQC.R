@@ -44,6 +44,29 @@ source(file.path(get_script_dir(), "qc_config_milltest.R"))
 out_dir <- file.path(data_root, "derived", "qc")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
+# Clear this directory's previous contents before writing. Several outputs here
+# are written conditionally -- a per-check flag table only appears when that
+# check fires, and spectra_qc_cleaned.csv only when a spectrum is actually
+# removed -- so without this, a file from an earlier run survives into a later
+# one and misrepresents it. That is not hypothetical: after the 2026-09-24
+# ANKOM fix stopped both the physical-bounds and cascade checks from firing,
+# this directory still held their 2026-09-23 flag tables, plus a
+# spectra_qc_cleaned.csv from the run whose removal bug dropped 18 whole
+# spectra. Anyone reading the directory would have taken all three as current.
+# The whole point of shipping a QC report is that it describes this run.
+old_outputs <- c(Sys.glob(file.path(out_dir, "*_flags.csv")),
+                 file.path(out_dir, c("qc_check_summary.csv",
+                                      "qc_quality_flag_by_spectrum.csv",
+                                      "removal_log.csv",
+                                      "spectra_qc_cleaned.csv",
+                                      "spectral_jump_correction_status.csv",
+                                      "spectral_metadata_sidecar_with_qc_flags.csv")))
+old_outputs <- old_outputs[file.exists(old_outputs)]
+if (length(old_outputs) > 0) {
+  invisible(file.remove(old_outputs))
+  message(sprintf("Cleared %d output(s) from a previous QC run", length(old_outputs)))
+}
+
 # --- inputs ----------------------------------------------------------------
 sidecar <- read.csv(file.path(data_root, "derived", "ecosis", "spectral_metadata_sidecar.csv"))
 
@@ -79,8 +102,11 @@ flag_list[["trait_literature_bounds"]] <- qc_write_log(literature_flags, out_dir
 
 # Sequential-assay cascade: a failure early in a sequential wash puts every
 # trait derived after it in doubt. Runs off the physical-bounds failures,
-# since those are the unambiguous ones.
+# since those are the unambiguous ones. With no physical-bounds failures there
+# is nothing to cascade from -- and a zero-row flag table carries no columns to
+# select on, so skip rather than subset it.
 for (chain_name in names(sequential_assay_chains)) {
+  if (nrow(physical_flags) == 0) break
   spec <- sequential_assay_chains[[chain_name]]
   cascade <- qc_sequential_cascade(
     physical_flags %>% distinct(across(all_of(c(spec$key_cols, "trait_flagged")))),
@@ -217,6 +243,61 @@ if (file.exists(ankom_blanks_path)) {
   }
 } else {
   message("  ankom_blank_drift: SKIPPED -- run AnkomExtract.R to produce ankom_blanks_mill_test.csv")
+}
+
+# ANKOM spreadsheet arithmetic. The workbooks report each fiber fraction as a
+# formula over the typed-in weights; AnkomExtract.R recomputes the same
+# fractions straight from the protocol and writes both side by side. A
+# disagreement means the workbook's arithmetic is broken -- a relative cell
+# reference that slipped a row, so the formula reads a neighbouring sample's
+# weight. The values such a formula produces are entirely plausible and match
+# their own batch, so no bounds, group or literature check can see them; only
+# recomputation can (found 2026-09-24, two rows of the FF sheet).
+# Flag-only here: the deposit already carries the recomputed values, so this
+# records the defect for whoever fixes the source workbook.
+# ANKOM start weight. The protocol calls for 0.5 g +/- 0.05 per bag, and that
+# weight is the denominator of all three fiber fractions -- so a wrong one
+# scales every trait for that sample without making any of them look
+# impossible. Flag-only: a small deviation is a protocol deviation, not bad
+# data (Henry, 2026-09-24).
+ankom_weights_path <- file.path(data_root, "derived", "ankom",
+                                "ankom_sample_weights_mill_test.csv")
+if (file.exists(ankom_weights_path)) {
+  ankom_weight_flags <- qc_hard_bounds(
+    read.csv(ankom_weights_path), ankom_weight_bounds,
+    id_cols = c("sample_name", "dry_treatment")
+  )
+  flag_list[["ankom_start_weight"]] <-
+    qc_write_log(ankom_weight_flags, out_dir, "ankom_start_weight")
+  if (nrow(ankom_weight_flags) > 0) {
+    cat("  !! ANKOM start weights outside the protocol window:\n")
+    print(as.data.frame(ankom_weight_flags))
+  }
+} else {
+  message("  ankom_start_weight: SKIPPED -- run AnkomExtract.R to produce ankom_sample_weights_mill_test.csv")
+}
+
+ankom_recompute_path <- file.path(data_root, "derived", "ankom",
+                                  "ankom_reported_vs_recomputed.csv")
+if (file.exists(ankom_recompute_path)) {
+  ankom_formula_flags <- qc_derived_mismatch(
+    read.csv(ankom_recompute_path),
+    id_cols = c("sample_name", "dry_treatment", "trait"),
+    reported_col = "sheet_value",
+    recomputed_col = "recomputed",
+    # 0.01 mg/g is far below what this assay can resolve, so anything above
+    # it is a defect rather than floating-point noise
+    tolerance = 0.01
+  )
+  flag_list[["ankom_formula_mismatch"]] <-
+    qc_write_log(ankom_formula_flags, out_dir, "ankom_formula_mismatch")
+  if (nrow(ankom_formula_flags) > 0) {
+    cat("  !! ANKOM workbook formulas disagree with the protocol (recomputed values used in the deposit):\n")
+    print(as.data.frame(ankom_formula_flags %>%
+      select(sample_name, dry_treatment, trait, reported, recomputed, difference)))
+  }
+} else {
+  message("  ankom_formula_mismatch: SKIPPED -- run AnkomExtract.R to produce ankom_reported_vs_recomputed.csv")
 }
 
 # ---- 1e. Covariation checks --------------------------------------------
@@ -359,7 +440,22 @@ check_counts <- qc_build_report(flag_list, out_dir = out_dir, unit_col = "sample
 # spectrum row for that sample/treatment combo inherits the flag, since
 # that's the grain the deposit is actually shipped at.
 broadcast_to_spectra <- function(flag_df, check_name) {
+  # A check that fired on nothing has nothing to broadcast, and a zero-row
+  # table carries no columns to inspect -- so bail before the guard below.
+  if (is.null(flag_df) || nrow(flag_df) == 0) return(NULL)
+
   join_cols <- intersect(c("spectra", "sample_name", "dry_treatment", "mill_treatment"), names(flag_df))
+  # A flag table must identify WHICH sample it is about. Without `spectra` or
+  # `sample_name` the semi_join below matches on treatment alone and silently
+  # flags every spectrum in that treatment -- 1188 rows instead of 18, and it
+  # looks like a plausible result rather than an error. This bit once, when a
+  # new check's table carried `Sample_ID` instead of `sample_name`: the name
+  # was intersected away, leaving only `dry_treatment` to join on.
+  if (!any(c("spectra", "sample_name") %in% join_cols)) {
+    stop(sprintf(
+      "check '%s': flag table has no `spectra` or `sample_name` column (has: %s). Broadcasting it would flag every spectrum matching its treatment columns. Rename the sample identifier to `sample_name`.",
+      check_name, paste(names(flag_df), collapse = ", ")))
+  }
   if ("spectra" %in% join_cols) {
     spectra_hit <- flag_df$spectra
   } else if (length(join_cols) > 0) {
@@ -418,6 +514,15 @@ removal_log <- bind_rows(lapply(removal_policy, function(check_name) {
   if (is.null(df) || nrow(df) == 0) return(NULL)
   df %>% mutate(removed_by = check_name, removal_date = Sys.Date())
 }))
+# When nothing was removed, still write a readable table rather than a 3-byte
+# file with no header. "Nothing was removed" is a claim the deposit makes, so
+# it should be a file a reader can actually open and see is empty -- an
+# unparseable one asserts nothing.
+if (nrow(removal_log) == 0) {
+  removal_log <- tibble::tibble(spectra = character(0), trait_flagged = character(0),
+                                value = double(0), removed_by = character(0),
+                                removal_date = as.Date(character(0)))
+}
 write.csv(removal_log, file.path(out_dir, "removal_log.csv"), row.names = FALSE)
 
 # Trait-level removals: NA the offending VALUE, not the row -- the rest of
