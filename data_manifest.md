@@ -69,8 +69,9 @@ mechanisms — the distinction matters:
   because such a scan isn't a measurement of the sample at all. Removes
   nothing on the current data (max R350 here is 0.13).
 - `trait_physical_bounds` NA's the **offending value only**, keeping the row,
-  because the rest of that sample's measurements are fine. Drops exactly one
-  value on the current data: `MILL24_0035` FF `hemicellulose_mg_g`.
+  because the rest of that sample's measurements are fine. Fires on nothing on
+  the current data: the one value it caught on 2026-09-23 has since been
+  corrected at source (see `ankom_formula_mismatch` below).
 
 Everything removed is written to `removal_log.csv` with its value, the bound
 it violated, and the date.
@@ -81,6 +82,14 @@ a literature/TRY range only ever flags, because this lab works with diverse
 material and a true value outside TRY's compiled range isn't surprising. The
 config enforces this with a guard rather than a comment. The practical
 payoff is that a reader can tell the two apart in the outputs.
+
+**`derived/qc/` is cleared at the start of every run** (added 2026-09-24).
+Several outputs there are conditional — a flag table only appears when its
+check fires — so a file from an earlier run would otherwise survive into a
+later one and be read as current. It had already happened: after the ANKOM fix
+stopped the physical-bounds and cascade checks from firing, their previous flag
+tables were still sitting in the directory, alongside a `spectra_qc_cleaned.csv`
+left by the run whose removal bug dropped 18 whole spectra.
 
 **Read flag counts at the sample level, not the row level.** Flags are
 broadcast to the per-spectrum grain, so one bad per-sample chemistry value
@@ -94,39 +103,55 @@ flags, which was ~96 real sample × trait problems wearing a big number.
 | `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `quality_flag` / `n_checks_flagged`. **Decided 2026-09-23 (Henry): ship this ALONGSIDE the bare sidecar, not instead of it** — and explain the distinction in the deposit README, so a user knows the flagged version is the same data plus advisory columns, not a different or filtered dataset. |
 | `derived/qc/qc_check_summary.csv` | 1.5K | same — one row per check, with how many rows it flagged. The short QC report. |
 | `derived/qc/qc_quality_flag_by_spectrum.csv` | ~180K | same — per-spectrum flag reasons, joinable to any other spectral file by `spectra`. |
-| `derived/qc/*_flags.csv` | ~550K total | same — one table per check, carrying the offending value, the group median/bound it was compared against, and the deviation. 38 tables in the current run. |
-| `derived/qc/removal_log.csv` | small | same — what the removal policy actually removed, and why. Empty on the current run (0 spectra removed); present regardless so "nothing was removed" is an explicit, checkable statement rather than an absent file. |
+| `derived/qc/*_flags.csv` | ~550K total | same — one table per check, carrying the offending value, the group median/bound it was compared against, and the deviation. 39 tables in the current run. |
+| `derived/qc/removal_log.csv` | small | same — what the removal policy actually removed, and why. Empty on the current run (0 spectra removed, 0 trait values NA'd); present regardless so "nothing was removed" is an explicit, checkable statement rather than an absent file. |
 | `derived/qc/spectral_jump_correction_status.csv` | small | same — per splice point, the share of spectra with an exact `R(splice) == R(splice+1)` match, i.e. whether the file has already been jump-corrected. Documents *why* the splice-jump check was skipped. |
 
-What runs, and what it found on the 2026-09-23 run (2376 spectra):
+What runs, and what it found on the 2026-09-24 run (2376 spectra):
 
-- **`trait_physical_bounds`** — **1 sample, and it is DROPPED.**
-  `MILL24_0035` FF carried `hemicellulose_mg_g = -157.1`, which is
-  impossible. The raw workbook has `Perc_Hemiceullose = -15.71%` and
-  `AnkomExtract.R` converts it faithfully, so **the error is in the source
-  data, not the pipeline**. In the ANKOM sequential method hemicellulose =
-  NDF − ADF, so a negative means ADF came out larger than NDF; the same
-  sample's OD run is a normal +17.30%. Per Henry (2026-09-23), completely
-  impossible values are dropped and logged, so this value is NA'd in the
-  deposit copy and recorded in `removal_log.csv`. That sample's cellulose,
-  lignin and OD hemicellulose are untouched. Nothing else in the dataset is
-  physically impossible.
-- **`ankom_fiber_cascade`** — **2 values flagged.** ANKOM is a sequential
-  wash (NDF → ADF on the NDF residue → ADL on the ADF residue), so a failure
-  at an early stage puts everything derived after it in doubt regardless of
-  whether the later value looks sane. `MILL24_0035` FF's cellulose and lignin
-  are flagged as downstream of its failed hemicellulose. **Flagged, not
-  removed**, and the evidence says they're probably fine: hemicellulose =
-  `Perc_Remaining_Post_NDF − Perc_Remaining_Post_ADF`, and only the first of
-  those is corrupt for this sample (stated 16.82% against 45.31% implied by
-  its own weights; the rest of the batch agrees to within ~0.7 points, and
-  post-ADF is consistent for every row). Cellulose (post-ADF − post-ADL) and
-  lignin (post-ADL) don't use the bad cell. But "probably fine per a traced
-  calculation" isn't the standard for a deposit, so a human confirms.
-  **Also worth acting on separately: the hemicellulose is recoverable.**
-  Recomputing post-NDF from the weights gives ~12.8%, unremarkable for this
-  batch (range up to 39.3%) — fixing that one cell restores the measurement
-  instead of losing it.
+- **`trait_physical_bounds`** — **0 samples.** Nothing in the dataset is
+  physically impossible. The 2026-09-23 run flagged and dropped one value
+  (`MILL24_0035` FF `hemicellulose_mg_g = -157.1`); that turned out to be a
+  broken formula in the source workbook, has been corrected, and the sample
+  now reports a normal 120.80 mg/g. See `ankom_formula_mismatch` below.
+- **`ankom_fiber_cascade`** — **0 values.** ANKOM is a sequential wash
+  (NDF → ADF on the NDF residue → ADL on the ADF residue), so a failure at an
+  early stage puts everything derived after it in doubt regardless of whether
+  the later value looks sane. With no physical-bounds failure there is nothing
+  to cascade from. The 2026-09-23 run flagged `MILL24_0035` FF's cellulose and
+  lignin as downstream of its then-failing hemicellulose; both are clean now.
+- **`ankom_formula_mismatch`** — **2 values, and this check is the reason the
+  deposit is correct.** The ANKOM workbooks report each fiber fraction as a
+  spreadsheet formula over the typed-in weights. Two rows of the FF workbook
+  have formulas whose **relative row references had slipped**, so they read a
+  neighbouring sample's weight — a dragged fill-handle or inserted row. A full
+  audit of the workbook found 7 such formulas across rows 15 and 21. The
+  consequence for the deposit:
+  - `MILL24_0035` (row 15): `Perc_Remaining_Post_NDF` read `F14` instead of
+    `F15`, which is what produced the impossible −157.1 mg/g hemicellulose
+    that the 2026-09-23 run caught. **Corrected in the workbook 2026-09-24.**
+  - `MILL24_0057` (row 21): five formulas read `D22` (the *next* row's bag
+    tare) instead of `D21`. One of them is
+    `Percent_Lignin_recalcitrants`, which **is** deposited: it reported
+    142.36 mg/g where the weights give **153.95**. This is the point of the
+    check — an 11.6 mg/g error in a value that is entirely plausible, sits
+    inside every bound, and matches its own batch. No bounds check, group
+    comparison, cascade or literature range could see it. Only recomputation
+    could.
+  - The OD workbook is clean (0 off-row references).
+
+  **`AnkomExtract.R` therefore no longer trusts the workbook's derived
+  columns.** It recomputes all three fractions from the raw weights and the
+  batch's blank-bag corrections, taken directly from
+  `Hobbie_Ankom_Protocol_Frye_edited2025.docx` (the lab's ANKOM protocol,
+  authored by Frye, which is where the template's formulas came from), and
+  writes the workbook's own reported values beside them to
+  `derived/ankom/ankom_reported_vs_recomputed.csv`. `TraitSpectralQC.R` runs
+  enspec-qc's `qc_derived_mismatch()` over that pair. **The recomputed values
+  are the ones in the deposit**, so a future reference slip cannot change a
+  deposited number — it can only raise this flag. Note the check also catches
+  a stale cached value, where the formula is right but the file was last saved
+  without recalculating: `readxl` returns the cache, not the formula.
 - **`phenolics_relative_error`** — **2 samples.** The TPC sheets report a
   mean GAE and an SD over their own duplicate/triplicate measures, so this
   asks whether the assay agreed with itself — something no
@@ -335,7 +360,7 @@ cleaning work, not just a copy:
 |---|---|---|---|
 | Isotope (δ13C/δ15N, %C/%N) | `ChemResults/Report - 13C15N - BIOCORE_05.26.26.xlsx` (67K) | **Not a Mill Test file in origin** — its own metadata says `Study = BIOCORE`; only 22 of its rows (11 samples x FF/OD) are Mill Test, mixed with ~60 unrelated Biocore Tree samples in the same run. Per `chemistry-sample-handling/CLAUDE.md`, this comparison is itself a small side-check for that project, not manuscript-scope for either project. | `Workflow_Calculations/code/IsotopeExtract.R` → `derived/isotope/isotope_mill_test.csv` (22 rows). Ran clean. |
 | TPC (phenolics) | `ChemResults/Mill Test_{FF,OD}_TPC.xlsx` (591K + 593K) | Broadleaf-heavy batch only (30 samples) — a second, needle-leaved-conifer batch (samples 035-066) was run later and lives **only** in `chemistry_sample_handling/raw_chem_inputs/` (`08042026-FF BALL_GAE.xlsx` / `07302026 - OD BALL_GAE.xlsx`), never copied into Mill24 at all. Both batches also need Code/Plant.ID triplicate-QC parsing (calibration standards + QC re-runs share the same Code prefix as real samples). | `Workflow_Calculations/code/TPCExtract.R` → `derived/tpc/tpc_mill_test.csv` (120 rows, 60 samples: 30 broadleaf + 30 conifer). Parsing logic matches `chemistry-sample-handling/code/chemistry_comparison_results.R`, which reads the same Mill24 files for a different analysis. Ran clean, no ID collisions between the two batches. |
-| ANKOM (fiber assay) | `ChemResults/Ankom_Primary_Template_Zach_Mill{FF,OD}.xlsx` (13K + 13K) | Clean already — verified no other project mixed in, just needed percent→mg/g conversion and the BLANK QC row dropped. | `Workflow_Calculations/code/AnkomExtract.R` → `derived/ankom/ankom_mill_test.csv` (46 rows, 23 samples). Ran clean. |
+| ANKOM (fiber assay) | `ChemResults/Ankom_Primary_Template_Zach_Mill{FF,OD}.xlsx` (15K + 13K) | No other project mixed in. **But the FF workbook's arithmetic was broken** (found 2026-09-24): 7 formulas across rows 15 and 21 had relative row references that had slipped, so they read a neighbouring sample's weight. Corrupted `MILL24_0035` hemicellulose (caught as impossible) and `MILL24_0057` lignin (11.6 mg/g too low, and entirely plausible-looking). OD is clean. | `Workflow_Calculations/code/AnkomExtract.R` → `derived/ankom/ankom_mill_test.csv` (46 rows, 23 samples) + `ankom_blanks_mill_test.csv` (batch QC blanks) + `ankom_reported_vs_recomputed.csv` (the math check's input). **Recomputes all three fractions from the raw weights per the lab protocol rather than reading the workbook's formula columns**, so a reference slip can no longer change a deposited value. Ran clean. |
 | Fat/oil content | `/Volumes/Enspec/projects/fat_assay_development/raw_data/Defat_test_samples.xlsx` | Same mixed-project problem as isotope: 8 Mill Test samples (MILL24_0001/0007/0011/0017/0036/0040/0049/0060, FF+OD) mixed with 8 unrelated SHIFT-project rows in the same sheets, plus an entirely SHIFT "Samples" sheet. | `Workflow_Calculations/code/FatAssayExtract.R` → `derived/fat_assay/fat_assay_mill_test.csv` (16 rows, 8 samples). Ran clean. |
 
 All four raw source files above are still included in the deposit zip
