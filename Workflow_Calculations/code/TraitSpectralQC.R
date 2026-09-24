@@ -255,12 +255,34 @@ if (file.exists(ankom_blanks_path)) {
 # recomputation can (found 2026-09-24, two rows of the FF sheet).
 # Flag-only here: the deposit already carries the recomputed values, so this
 # records the defect for whoever fixes the source workbook.
+# ANKOM start weight. The protocol calls for 0.5 g +/- 0.05 per bag, and that
+# weight is the denominator of all three fiber fractions -- so a wrong one
+# scales every trait for that sample without making any of them look
+# impossible. Flag-only: a small deviation is a protocol deviation, not bad
+# data (Henry, 2026-09-24).
+ankom_weights_path <- file.path(data_root, "derived", "ankom",
+                                "ankom_sample_weights_mill_test.csv")
+if (file.exists(ankom_weights_path)) {
+  ankom_weight_flags <- qc_hard_bounds(
+    read.csv(ankom_weights_path), ankom_weight_bounds,
+    id_cols = c("sample_name", "dry_treatment")
+  )
+  flag_list[["ankom_start_weight"]] <-
+    qc_write_log(ankom_weight_flags, out_dir, "ankom_start_weight")
+  if (nrow(ankom_weight_flags) > 0) {
+    cat("  !! ANKOM start weights outside the protocol window:\n")
+    print(as.data.frame(ankom_weight_flags))
+  }
+} else {
+  message("  ankom_start_weight: SKIPPED -- run AnkomExtract.R to produce ankom_sample_weights_mill_test.csv")
+}
+
 ankom_recompute_path <- file.path(data_root, "derived", "ankom",
                                   "ankom_reported_vs_recomputed.csv")
 if (file.exists(ankom_recompute_path)) {
   ankom_formula_flags <- qc_derived_mismatch(
     read.csv(ankom_recompute_path),
-    id_cols = c("Sample_ID", "dry_treatment", "trait"),
+    id_cols = c("sample_name", "dry_treatment", "trait"),
     reported_col = "sheet_value",
     recomputed_col = "recomputed",
     # 0.01 mg/g is far below what this assay can resolve, so anything above
@@ -272,7 +294,7 @@ if (file.exists(ankom_recompute_path)) {
   if (nrow(ankom_formula_flags) > 0) {
     cat("  !! ANKOM workbook formulas disagree with the protocol (recomputed values used in the deposit):\n")
     print(as.data.frame(ankom_formula_flags %>%
-      select(Sample_ID, dry_treatment, trait, reported, recomputed, difference)))
+      select(sample_name, dry_treatment, trait, reported, recomputed, difference)))
   }
 } else {
   message("  ankom_formula_mismatch: SKIPPED -- run AnkomExtract.R to produce ankom_reported_vs_recomputed.csv")
@@ -418,7 +440,22 @@ check_counts <- qc_build_report(flag_list, out_dir = out_dir, unit_col = "sample
 # spectrum row for that sample/treatment combo inherits the flag, since
 # that's the grain the deposit is actually shipped at.
 broadcast_to_spectra <- function(flag_df, check_name) {
+  # A check that fired on nothing has nothing to broadcast, and a zero-row
+  # table carries no columns to inspect -- so bail before the guard below.
+  if (is.null(flag_df) || nrow(flag_df) == 0) return(NULL)
+
   join_cols <- intersect(c("spectra", "sample_name", "dry_treatment", "mill_treatment"), names(flag_df))
+  # A flag table must identify WHICH sample it is about. Without `spectra` or
+  # `sample_name` the semi_join below matches on treatment alone and silently
+  # flags every spectrum in that treatment -- 1188 rows instead of 18, and it
+  # looks like a plausible result rather than an error. This bit once, when a
+  # new check's table carried `Sample_ID` instead of `sample_name`: the name
+  # was intersected away, leaving only `dry_treatment` to join on.
+  if (!any(c("spectra", "sample_name") %in% join_cols)) {
+    stop(sprintf(
+      "check '%s': flag table has no `spectra` or `sample_name` column (has: %s). Broadcasting it would flag every spectrum matching its treatment columns. Rename the sample identifier to `sample_name`.",
+      check_name, paste(names(flag_df), collapse = ", ")))
+  }
   if ("spectra" %in% join_cols) {
     spectra_hit <- flag_df$spectra
   } else if (length(join_cols) > 0) {

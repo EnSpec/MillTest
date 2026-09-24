@@ -357,6 +357,23 @@ thresholds <- list(
   ankom_blank_increase = 0.01
 )
 
+# ---- ANKOM start weight -------------------------------------------------
+# The protocol calls for 0.5 g of sample per bag, +/- 0.05
+# (Hobbie_Ankom_Protocol_Frye_edited2025.docx, prep step 4), so a start weight
+# outside 0.450-0.550 g means the weighing was mis-entered or the bag was
+# mis-packed (Henry, 2026-09-24). Worth checking because the start weight is
+# the denominator of all three fiber fractions: a wrong one scales every trait
+# for that sample without making any of them look impossible.
+#
+# FLAG-ONLY, deliberately. A weight slightly outside the window is a protocol
+# deviation, not an impossibility -- the assay arithmetic still holds, so the
+# value may be perfectly usable. It is the far-off ones that indicate a
+# transcription error, and a human should decide which is which.
+ankom_weight_bounds <- tibble::tribble(
+  ~trait,        ~lower, ~upper, ~source,                              ~reason,
+  "sample_wt_g",  0.450,  0.550, "Hobbie/Frye ANKOM protocol, step 4", "start weight outside the protocol's 0.5 g +/- 0.05 window -- mis-entered weight or a mis-packed bag; it is the denominator of all three fiber fractions"
+)
+
 # ---- Spectral-angle reference -------------------------------------------
 # "medoid" (the real scan with the smallest summed angle to the others) or
 # "albedo" (the real scan closest to the group's median brightness).

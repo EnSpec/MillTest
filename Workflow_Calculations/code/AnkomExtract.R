@@ -103,6 +103,24 @@ ankom_all <- bind_rows(
 # that a bad formula shows up in the deposit's QC report alongside every other
 # flag rather than only as a warning here. This script's job is to put both
 # numbers side by side.
+# --- the raw weights, for QC and provenance --------------------------------
+# Every fraction is a function of these five numbers, so they are what makes
+# the assay auditable. Written out separately from the traits because they are
+# assay provenance, not measurements of the plant. Also the input to the
+# start-weight check: the protocol calls for 0.5 g +/- 0.05, and a sample well
+# outside that window was either mis-weighed at entry or mis-packed
+# (Henry, 2026-09-24).
+ankom_weights <- ankom_all %>%
+  transmute(sample_name = Sample_ID, dry_treatment,
+            bag_tare_g = tare, sample_wt_g = sample_wt,
+            resid_ndf_g = resid_ndf, resid_adf_g = resid_adf, resid_adl_g = resid_adl)
+
+write.csv(ankom_weights, file.path(out_dir, "ankom_sample_weights_mill_test.csv"),
+          row.names = FALSE)
+
+cat(sprintf("Wrote %d sample-weight rows to %s\n", nrow(ankom_weights),
+            file.path(out_dir, "ankom_sample_weights_mill_test.csv")))
+
 reported_vs_recomputed <- ankom_all %>%
   pivot_longer(
     cols = starts_with("sheet_"),
@@ -113,7 +131,10 @@ reported_vs_recomputed <- ankom_all %>%
     trait == "cellulose_mg_g"     ~ cellulose_mg_g,
     trait == "lignin_recal_mg_g"  ~ lignin_recal_mg_g
   )) %>%
-  transmute(Sample_ID, dry_treatment, trait, sheet_value, recomputed)
+  # named sample_name (not Sample_ID) because TraitSpectralQC.R broadcasts
+  # flags onto spectra by joining on sample_name/dry_treatment -- a table
+  # carrying only dry_treatment would flag every spectrum in that treatment
+  transmute(sample_name = Sample_ID, dry_treatment, trait, sheet_value, recomputed)
 
 write.csv(reported_vs_recomputed,
           file.path(out_dir, "ankom_reported_vs_recomputed.csv"), row.names = FALSE)
