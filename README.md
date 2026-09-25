@@ -71,7 +71,8 @@ step's inputs come from an earlier step, that's noted explicitly.
    [krkovach/SpectralPredictR](https://github.com/krkovach/SpectralPredictR).
    Aggregates raw `.asd` files, applies an additive jump correction at the
    1000/1800 nm detector splices, resamples to 5 nm, and applies PLSR trait
-   coefficients (Wang et al. 2020). Writes `spectralpredictr/*.csv` (raw
+   coefficients from [Wang et al. (2020)](https://doi.org/10.1111/nph.16711).
+   Writes `spectralpredictr/*.csv` (raw
    spectra, jump-corrected spectra, 5 nm-resampled spectra, predicted
    traits). ~15 minutes against the full `DrySpec/` archive (2418 `.asd`
    files).
@@ -174,3 +175,12 @@ replaced with a `data_root` convention, superseded scripts moved to
 `archive/`, a shared QC pass and taxonomic-harmonization step added ahead of
 the EcoSIS deposit. Full internal data paths, the archived-code inventory,
 and the cleanup history are in `REPOSITORY_NOTES.md`.
+
+## Funding
+
+This work was supported by the National Science Foundation's ASCEND Biology
+Integration Institute (BII) [award DBI 2021898 to P. A. Townsend].
+
+<p align="center">
+  <img src="assets/ASCEND_BII_logo.png" alt="NSF ASCEND Biology Integration Institute logo" width="150">
+</p>
