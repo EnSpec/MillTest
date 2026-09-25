@@ -96,9 +96,12 @@ Four `archive/` directories, one per `Workflow_*/` folder, each with its own
 
 ## Repository status / history
 
-This repo was migrated out of a private, per-student working setup (three
-students' machines, none of which still exist) into a single shared repo
-for public release alongside manuscript submission. Original state at
+This repo was migrated out of [Zach Breuer's private repository](https://github.com/zbreuer?tab=repositories)
+into a single shared repo under EnSpec for public release alongside
+manuscript submission — the initial commit here is literally titled "Clone
+Private Repository". Three people (Zach Breuer, Annabelle Majerus, and
+Henry Frye — the code's `CITATION.cff` authors) had been working directly
+on their own machines, none of which still exist. Original state at
 migration: a one-line README, no license, no dependency lock, hard-coded
 per-machine paths throughout, and two independent difference-spectrum
 pipelines (the averaging approach and the bootstrap approach) with no
@@ -137,11 +140,21 @@ this is the summary):
   like this can't ship silently); taxonomic harmonization against the World
   Flora Online backbone added via PR #5.
 
-**Known open issue, not yet fixed:** the spectral file-naming parser
-(`AnkomExtract.R`, `SpectralPredictR.R`, and others) extracts the
-drying/milling codes from `sample_name` using fixed-offset `substring()`
-calls rather than parsing delimited fields. It works for every sample name
-in this dataset, but is fragile to any future naming convention change.
+**Known open issue, not yet fixed:** `BootstrapCode.R`, `DataJoin.R`, and
+`ChemistryAnalysis.R` each extract the drying/milling codes from
+`sample_name` using fixed-offset `substring()`/`substr()` calls (e.g.
+`substring(sample_name, 13, 14)` for the drying code, `substring(sample_name,
+16, 19)` for the milling code) rather than splitting on the `_` delimiters.
+This only works because every sample name in this dataset follows the exact
+same fixed-width template — `MILL24_<4-digit id>_<2-char drying>_<4-char
+milling>_<5-digit replicate>` — so the character positions never shift. It
+is fragile, not broken: a future sample ID past 4 digits, a differently-sized
+drying/milling code, or an extra inserted field would shift every downstream
+offset and pull the wrong substring silently (no error, no crash — same
+class of risk as the ANKOM formula-slip bug, just in the code instead of a
+spreadsheet). Not something to fix under this release's deadline; worth a
+cheap regex/`stringr`-based rewrite (split on `_`, don't count characters)
+before this pipeline is reused for a project with a different naming scheme.
 
 **Reused across the file naming/duplicate-scan/dedup logic**: 7 sample x
 treatment combinations were scanned twice, about a month apart, under two

@@ -1,4 +1,4 @@
-# Mill Test 2024
+# Code repository for effects of drying and milling treatments on estimates of foliar functional traits with VSWIR spectroscopy
 
 Effects of foliar **sample handling** (freeze-dried vs. oven-dried) and
 **milling method** (ball mill, fine rotary mesh, coarse rotary mesh) on:
@@ -32,10 +32,11 @@ Spectral file names follow `MILL24_<id>_<drying>_<milling>_<replicate>`, e.g.
 Trait-prediction inputs from SpectralPredictR carry the same information in a
 `sampledata_head` column.
 
-> The drying/milling codes are currently extracted with fixed-offset
-> `substring()` calls into `sample_name` rather than parsing delimited
-> fields. Works for every name in this dataset; noted as a fragility for
-> future naming-convention changes in `REPOSITORY_NOTES.md`.
+> Some scripts (`BootstrapCode.R`, `DataJoin.R`, `ChemistryAnalysis.R`)
+> extract the drying/milling codes with fixed-offset `substring()` calls
+> into `sample_name` rather than parsing delimited fields. Works for every
+> name in this dataset; noted as a fragility for future naming-convention
+> changes in `REPOSITORY_NOTES.md`.
 
 ## Reproducibility note
 
@@ -167,7 +168,7 @@ citations were included without author verification.
 
 ## Repository status
 
-This repo was migrated out of a private student repo and cleaned up for
+This repo was migrated out of [Zach Breuer's private repository](https://github.com/zbreuer?tab=repositories) and cleaned up for
 public release alongside manuscript submission: hard-coded machine paths
 replaced with a `data_root` convention, superseded scripts moved to
 `archive/`, a shared QC pass and taxonomic-harmonization step added ahead of
