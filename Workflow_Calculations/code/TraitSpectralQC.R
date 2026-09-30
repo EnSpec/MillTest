@@ -41,6 +41,7 @@ get_script_dir <- function() {
 
 source(file.path(qc_lib_path, "R", "trait_qc.R"))
 source(file.path(qc_lib_path, "R", "spectral_qc.R"))
+source(file.path(qc_lib_path, "R", "spectral_transforms.R"))  # snv_over_range()
 source(file.path(qc_lib_path, "R", "qc_report.R"))
 source(file.path(get_script_dir(), "qc_config_milltest.R"))
 
@@ -375,28 +376,45 @@ flag_list[["spectral_flat"]] <- qc_write_log(flat_flags, out_dir, "spectral_flat
 range_flags <- qc_spectral_out_of_range(spec_joined, wave_cols, spec_id_cols)
 flag_list[["spectral_out_of_range"]] <- qc_write_log(range_flags, out_dir, "spectral_out_of_range")
 
+# Single-band checks on reflectance (R350 ceiling, NIR plateau floor): "this
+# scan measured nothing". Both are removals -- see removal_policy.
+for (check_name in names(spectral_band_checks)) {
+  cfg <- spectral_band_checks[[check_name]]
+  flag_list[[check_name]] <- qc_write_log(
+    qc_spectral_band_threshold(spec_joined, wave_cols, spec_id_cols,
+                               band = cfg$band, upper = cfg$upper, lower = cfg$lower),
+    out_dir, check_name)
+}
+
+# ---- SNV spectra for the shape checks (replicate angle, PCA review) ----
+stopifnot("only SNV is implemented for the shape checks" = shape_qc_transform$method == "snv")
+spec_shape <- snv_over_range(spec_joined, wave_cols, shape_qc_transform$range,
+                             keep_cols = c(spec_id_cols, "measure_id"))
+shape_cols <- setdiff(names(spec_shape), c(spec_id_cols, "measure_id"))
+message(sprintf("Shape checks on SNV spectra, %g-%g nm (%d bands)",
+                shape_qc_transform$range[1], shape_qc_transform$range[2], length(shape_cols)))
+
 # Grouping unit = one spectral replicate set (sample x mill treatment x dry
 # treatment, ~6 replicates) -- matches how the manuscript's own bootstrap
 # procedure treats replicate sets (BootstrapCode.R), and is the level at
 # which "the probe wasn't on the sample right for this one scan" would show
 # up against its own siblings.
-group_outlier_flags <- qc_spectral_group_outliers(spec_joined, "measure_id", wave_cols, spec_id_cols,
-                                                   min_n = 4,
-                                                   reference = spectral_angle_reference,
-                                                   method = thresholds$spectral_angle_method,
-                                                   angle_max_deg = thresholds$spectral_angle_max_deg,
-                                                   z_threshold = thresholds$spectral_angle_z)
-flag_list[["spectral_group_outlier"]] <- qc_write_log(group_outlier_flags, out_dir, "spectral_group_outlier")
-
-# Single-band check (R350 >= 0.9 -> not a real sample measure). This is the
-# one check in this deposit whose flags become removals -- see removal_policy.
-band_flags <- qc_spectral_band_threshold(
-  spec_joined, wave_cols, spec_id_cols,
-  band = spectral_band_check$band,
-  upper = spectral_band_check$upper,
-  lower = spectral_band_check$lower
-)
-flag_list[["spectral_band_threshold"]] <- qc_write_log(band_flags, out_dir, "spectral_band_threshold")
+stopifnot("the angle threshold is calibrated as an absolute angle" =
+            thresholds$spectral_angle_method == "absolute")
+# Called once with a negative threshold to get every non-reference angle, so
+# the distribution behind the configured threshold is reported each run.
+all_angles <- qc_spectral_group_outliers(spec_shape, "measure_id", shape_cols, spec_id_cols,
+                                         min_n = 4,
+                                         reference = spectral_angle_reference,
+                                         method = "absolute", angle_max_deg = -1)
+angle_q <- quantile(all_angles$spectral_angle_deg, c(0.5, 0.95, 0.99, 1))
+message(sprintf("Replicate angle to medoid (deg, n=%d): median %.3f, 95th %.3f, 99th %.3f, max %.3f",
+                nrow(all_angles), angle_q[1], angle_q[2], angle_q[3], angle_q[4]))
+flag_list[["spectral_group_outlier"]] <- qc_write_log(
+  all_angles %>%
+    filter(spectral_angle_deg > thresholds$spectral_angle_max_deg) %>%
+    mutate(threshold = thresholds$spectral_angle_max_deg),
+  out_dir, "spectral_group_outlier")
 
 # Splice-jump check: only meaningful on spectra that have NOT been jump
 # corrected, because the correction removes the evidence by construction.
@@ -414,9 +432,10 @@ if (any(jump_status$likely_corrected)) {
   flag_list[["spectral_splice_jump"]] <- qc_write_log(splice_flags, out_dir, "spectral_splice_jump")
 }
 
-# PCA review flags, two levels, one global fit. Review-only by policy.
+# PCA review flags, two levels, one global fit, on SNV spectra. Review-only
+# by policy.
 pca_flags <- qc_spectral_pca_flags(
-  spec_joined, wave_cols, spec_id_cols,
+  spec_shape, shape_cols, spec_id_cols,
   sample_var = "measure_id", group_var = "species_code",
   n_pc = thresholds$pca_n_pc,
   within_z = thresholds$pca_within_z,
@@ -497,12 +516,14 @@ write.csv(quality_flag_by_spectrum, file.path(out_dir, "qc_quality_flag_by_spect
 # 18 perfectly good spectra with it.
 #
 #   spectrum-level - the scan itself isn't a measurement of anything
-#     (R350 >= 0.9 means the puck or white reference got read). Drop the row.
+#     (R350 >= 0.9 means the puck or white reference got read; a NIR plateau
+#     below 0.3 means the probe wasn't on a sample). Drop the row.
 #   trait-level    - one value is impossible but the scan is fine. NA that
 #     value only, keep the row.
 spectrum_removal_checks <- intersect(
   removal_policy,
-  c("spectral_band_threshold", "spectral_flat", "spectral_out_of_range")
+  c("spectral_band_threshold", "spectral_nir_plateau_floor", "spectral_flat",
+    "spectral_out_of_range")
 )
 trait_removal_checks <- intersect(removal_policy, c("trait_physical_bounds"))
 

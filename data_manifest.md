@@ -174,15 +174,18 @@ data-dependent (grouping variable per trait, bounds, thresholds) lives in
 `Workflow_Calculations/code/qc_config_milltest.R`, committed here because
 it's part of this deposit's provenance.
 
-**Flag-only, with two exceptions** (Henry, 2026-09-20 / 2026-09-23). Every
+**Flag-only, with three exceptions** (Henry, 2026-09-20 / 2026-09-23 / 2026-09-30). Every
 check writes a flag table; flags are broadcast to the per-spectrum grain and
 carried into the deposit as two columns (`quality_flag`,
-`n_checks_flagged`). Two checks remove rather than flag, by two *different*
+`n_checks_flagged`). Three checks remove rather than flag, by two *different*
 mechanisms — the distinction matters:
 
-- `spectral_band_threshold` (R350 >= 0.9) drops the **whole spectrum row**,
-  because such a scan isn't a measurement of the sample at all. Removes
-  nothing on the current data (max R350 here is 0.13).
+- `spectral_band_threshold` (R350 >= 0.9) and `spectral_nir_plateau_floor`
+  (mean R1100–1300 < 0.3, added 2026-09-30 to match ACRES) drop the **whole
+  spectrum row**, because such a scan isn't a measurement of the sample at
+  all (white reference / empty puck read, or probe not on a sample). Both
+  remove nothing on the current data (max R350 here is 0.13; min NIR
+  plateau is 0.656).
 - `trait_physical_bounds` NA's the **offending value only**, keeping the row,
   because the rest of that sample's measurements are fine. Fires on nothing on
   the current data: the one value it caught on 2026-09-23 has since been
@@ -341,28 +344,40 @@ What runs, and what it found on the 2026-09-24 run (2376 spectra):
   - *`spectral_band_threshold`* (R350 >= 0.9, from the SHIFT dried-ground
     DAAC product): 0. Mill Test's max R350 is 0.13, so there are no
     accidental white-reference or empty-puck measurements in this dataset.
-  - *`spectral_group_outlier`*: **12 (0.6%)**, by spectral angle within the
+  - *`spectral_nir_plateau_floor`* (mean R1100–1300 < 0.3, added 2026-09-30,
+    same as ACRES; deliberate probe-off scans read 0.01–0.15): 0. Min here
+    is 0.656, 1st percentile 0.729.
+  - **The two shape checks below run on SNV spectra (400–2450 nm) since
+    2026-09-30**, via enspec-qc's `snv_over_range()`, so they compare
+    spectral shape rather than the brightness/scatter differences that
+    particle size and packing put between scans (in this dataset SNV cuts
+    the grind share of spectral variance from 23% to 5%). The physical
+    checks above stay on reflectance.
+  - *`spectral_group_outlier`*: **18 (0.9%)** on SNV (was 12 on
+    reflectance, 8 in common), by spectral angle within the
     6-replicate set (sample x mill x dry treatment). The reference is the
     **medoid** — the real scan with the smallest summed angle to the others
     — not a synthetic per-wavelength median (Henry, 2026-09-23: compare to
     a spectrum somebody actually measured, so a flag can be gone back to
     and looked at). The reference used is recorded per group as provenance.
-    **Threshold is an absolute angle, 0.75°, not a robust z-score.** With
+    **Threshold is an absolute angle, 1.6° on SNV (was 0.75° on
+    reflectance), not a robust z-score.** With
     only 6 scans per group a robust z computes its MAD on 5 angles, so the
     scale estimate is mostly noise and a tightly-agreeing group flags a
     perfectly good sibling for being slightly less tight; that approach
-    flagged 60 (2.5%). The observed within-group distribution here is
-    median 0.212°, 95th 0.518°, 99th 0.703°, max 1.277°, so 0.75° is a
+    flagged 60 (2.5%). The observed within-group distribution on SNV
+    spectra is median 0.454°, 95th 1.091°, 99th 1.565°, max 2.969°
+    (reflectance: 0.212 / 0.518 / 0.703 / 1.277), so 1.6° is a
     conservative cut that matches "outliers should be rare in a controlled
     system". A degree threshold also means the same thing across reruns and
     projects, and is interpretable by a data user. One-sided throughout: a
     small angle is good agreement, never a defect.
-  - *`spectral_pca_review`*: 28 flags for **manual review only**, never
-    removal — 25 at the within-sample level (a replicate far from its own
-    sample centroid) and 3 at the between-sample level (a sample far from
-    its species' centroid). The PCA is fit once across all spectra and both
-    levels measured in that shared space; top 5 PCs carry 98.8% of
-    variance.
+  - *`spectral_pca_review`*: 31 flags on SNV (was 28 on reflectance) for
+    **manual review only**, never removal — 24 at the within-sample level (a
+    replicate far from its own sample centroid) and 7 at the between-sample
+    level (a sample far from its species' centroid). The PCA is fit once
+    across all spectra and both levels measured in that shared space; top 5
+    PCs carry 97.3% of variance (98.8% on reflectance).
   - *`spectral_splice_jump`*: **skipped, by design.** It only means anything
     on uncorrected spectra, and `qc_detect_jump_corrected()` confirms both
     available CSVs are already corrected (exact `R(splice) == R(splice+1)`
@@ -378,6 +393,8 @@ impossible value** (the negative hemicellulose), 3 samples with genuinely
 low-but-plausible chemistry, 4 suspect chlorophyll replicate reads, 12
 spectral shape outliers out of 2376, and 44 samples hitting a phenolics
 bound that probably doesn't apply to our assay. Nothing was removed.
+(Spectral shape outliers are 18 since the 2026-09-30 switch to SNV; 1620 of
+2376 spectra carry at least one flag, was 1624.)
 `qc_check_summary.csv` — specifically its `n_distinct_units` column — is the
 honest view.
 
