@@ -323,12 +323,19 @@ thresholds <- list(
   # thing across reruns and across projects -- and it's something a data user
   # can actually reason about.
   #
-  # Set from the observed distribution on this dataset (1980 non-reference
-  # scans): median 0.212 deg, 95th 0.518, 99th 0.703, max 1.277. At 0.75 deg
-  # this flags 12 scans (0.61%), which fits "outliers should be rare in a
-  # controlled system" far better than robust-z > 3 did (60 scans, 3.0%).
+  # Computed on SNV spectra since 2026-09-30 (see shape_qc_transform below).
+  # On SNV spectra the angle is arccos of the correlation between two scans,
+  # so it runs larger than on reflectance and the threshold had to be reset.
+  # Observed distribution (1980 non-reference scans, SNV 400-2450 nm,
+  # 2026-09-30): median 0.454 deg, 95th 1.091, 99th 1.565, max 2.969. 1.6
+  # sits just above the 99th percentile, as the reflectance threshold did,
+  # and flags 18 scans (0.91%); 8 of them were among the 12 flagged on
+  # reflectance. The 4 no longer flagged differed from their siblings in
+  # brightness rather than shape, which SNV removes on purpose.
+  # (Superseded: 0.75 deg on reflectance, 2026-09-23 -- median 0.212, 99th
+  # 0.703, 12 flags. Before that, robust z > 3, which flagged 60 scans.)
   spectral_angle_method   = "absolute",
-  spectral_angle_max_deg  = 0.75,
+  spectral_angle_max_deg  = 1.6,
   spectral_angle_z        = 3,   # only used if method is switched to "robust_z"
 
   # PCA review flags (qc_spectral_pca_flags). Review-only, never removal.
@@ -383,31 +390,49 @@ ankom_weight_bounds <- tibble::tribble(
 # expected to matter more for fresh-leaf and field spectroscopy.
 spectral_angle_reference <- "medoid"
 
-# ---- Single-band threshold ----------------------------------------------
-# From the SHIFT dried-ground reflectance DAAC product, which removes every
-# spectrum with R350 >= 0.9 as "abnormal reflectance". Dry leaf powder sits
-# far below that at 350 nm (Mill Test's own max is 0.13, checked
-# 2026-09-22), so a value that high means the white reference panel or an
-# empty puck got measured instead of the sample.
-#
-# `band` can be a single wavelength or c(lower, upper) to average over a
-# range -- averaging 350-400 is worth considering, since 350 nm alone is the
-# noisiest band on an ASD. Left at the single band to match SHIFT exactly.
-spectral_band_check <- list(
-  band  = 350,
-  upper = 0.9,
-  lower = NULL
+# ---- Transform before the shape checks ----------------------------------
+# The replicate-angle and PCA review checks run on SNV spectra, not
+# reflectance (Henry, 2026-09-30, same as ACRES): SNV removes the offset and
+# scatter differences that particle size and packing put between scans, so
+# scans are compared on spectral shape. In this dataset's grind experiment
+# SNV cut the grind share of spectral variance from 23% to 5%
+# (EnSpec/dryspec-preprocessing, 04_mill24_mechanism.R). Range 400-2450 nm
+# drops the noisy detector edges. The physical checks (flat, out of range,
+# band thresholds, splice jumps) stay on reflectance. snv_over_range() is in
+# enspec-qc (R/spectral_transforms.R).
+shape_qc_transform <- list(method = "snv", range = c(400, 2450))
+
+# ---- Single-band thresholds ---------------------------------------------
+# Two checks for "that scan was not a sample", both matching ACRES:
+#   spectral_band_threshold    R350 >= 0.9 ceiling, from the SHIFT
+#     dried-ground reflectance DAAC product ("abnormal reflectance"). Dry leaf
+#     powder sits far below that at 350 nm (Mill Test's max is 0.13, checked
+#     2026-09-22), so a value that high means the white reference panel or an
+#     empty puck got measured instead of the sample. `band` is left at the
+#     single band to match SHIFT exactly.
+#   spectral_nir_plateau_floor mean R1100-1300 < 0.3 (Henry, 2026-09-30): the
+#     probe was not on a sample (in the air, over an empty well, or held above
+#     the packed powder). Dry plant powder is bright on the NIR/SWIR1 plateau.
+#     Set from deliberate bad scans (Zach Breuer, 2026-09-29,
+#     /Volumes/Enspec/data/collection/lab/ASD/QCComparisonScans): blank/empty
+#     well 0.01-0.02, probe above sample 0.12-0.15. Mill Test's own minimum
+#     is 0.656 (1st percentile 0.729), so this is expected to fire on nothing;
+#     running it is what makes "no probe-off scans" a tested claim.
+spectral_band_checks <- list(
+  spectral_band_threshold    = list(band = 350,          upper = 0.9,  lower = NULL),
+  spectral_nir_plateau_floor = list(band = c(1100, 1300), upper = NULL, lower = 0.3)
 )
 
 # ---- Removal policy ---------------------------------------------------
 # Named checks whose flags become REMOVALS. Everything else is flag-only.
 #
-# Two exceptions to this deposit's flag-only default, both Henry 2026-09-23:
+# Three exceptions to this deposit's flag-only default:
 #
-#   spectral_band_threshold - an R350 above 0.9 can't be a real sample
-#     measure, so those spectra are dropped and logged. Removes nothing on
-#     the current data (Mill Test has none) but the policy is correct for
-#     reruns and for adopting projects.
+#   spectral_band_threshold, spectral_nir_plateau_floor - an R350 above 0.9
+#     or a NIR plateau below 0.3 can't be a real sample measure, so those
+#     spectra are dropped and logged (Henry, 2026-09-23 and 2026-09-30).
+#     Neither removes anything on the current data, but the policy is correct
+#     for reruns and for adopting projects.
 #
 #   trait_physical_bounds - "any negative values (completely impossible)
 #     should be dropped and logged." A physically impossible value isn't
@@ -418,7 +443,8 @@ spectral_band_check <- list(
 #
 # Trait *literature* bounds stay flag-only and must NEVER appear here; the
 # guard below enforces that rather than trusting a comment.
-removal_policy <- c("spectral_band_threshold", "trait_physical_bounds")
+removal_policy <- c("spectral_band_threshold", "spectral_nir_plateau_floor",
+                    "trait_physical_bounds")
 
 stopifnot(
   "literature bounds are flag-only and must not drive removals (CLAUDE.md, Henry 2026-09-23)" =
