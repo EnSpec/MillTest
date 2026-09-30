@@ -16,6 +16,10 @@
 # sf expects (lon, lat) -- every point would have plotted transposed. The
 # mapview() call above it had xcol/ycol the other way around and was correct;
 # this rewrite uses that (correct) orientation throughout.
+#
+# 2026-09-30: coordinates in sample_info.csv are now rebuilt from the raw
+# field records by Workflow_Calculations/code/SampleCoordinates.R (three
+# hand-entry errors corrected); run that first.
 
 ###########################
 
@@ -41,8 +45,10 @@ sample_map <- ggplot(mill_sf) +
   theme_bw() +
   labs(color = "Growth form", title = "Mill Test 2024 sample locations")
 
-# coord_sf() preserves true geographic aspect ratio; the sample sites span
-# ~40 km east-west but only ~2 km north-south, so a near-square canvas leaves
-# most of the frame blank. Sized to roughly match that real aspect instead.
+# coord_sf() preserves true geographic aspect ratio. The wide 10 x 3.5 in
+# canvas used before 2026-09-30 was sized for an apparent ~40 km east-west
+# spread caused by one mistyped longitude (MILL24_0006); with coordinates
+# rebuilt by SampleCoordinates.R every site lies within ~1.6 km, roughly as
+# tall as it is wide.
 ggsave(file.path(out_dir, "sample_locations.png"), sample_map,
-       width = 10, height = 3.5, dpi = 300)
+       width = 7, height = 6, dpi = 300)

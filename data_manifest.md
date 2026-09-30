@@ -24,7 +24,8 @@ users, not the project's own scope history.
 |---|---|---|
 | `Mill24_RawSpec.csv` | 58M | Spectra (already jump-corrected despite the name; see the Must-include table). If the raw aggregate is rebuilt, regenerate everything downstream first. |
 | `derived/ecosis/spectral_metadata_sidecar.csv` and `derived/qc/*` (flag columns, removal log, QC summary) | ~3-5M | Decide whether the QC-flagged sidecar replaces the plain sidecar or ships alongside it. Regenerate after the QC re-run and the coordinate fix. |
-| `field_data/sample_info.csv` | 10K | Regenerated coordinates (MILL24_0006 fix) go in here. |
+| `field_data/sample_info.csv` | 10K | Coordinates rebuilt 2026-09-30 by `SampleCoordinates.R` (see "Sample coordinates" below). |
+| `field_data/raw_coordinates/` (Google Maps list snapshot + LSNP24 crown centers) and `derived/field/{sample_coordinates,cross_project_sample_links}.csv` | <100K | Raw coordinate sources and the per-sample provenance/link tables. |
 | `ChemResults/Brookside.csv` | 54K | Observed chemistry. |
 | `particle_size/data/full/**/*.csv` | 2.1M | Raw LS 13320 exports. |
 | `spectralpredictr/DimensionsDryTraitPredictions.csv` | 1.6M | Small and used by the manuscript's RMSE analysis; proposed to stay with the spectra (could move to Package B). |
@@ -80,6 +81,33 @@ same numbers used in the manuscript.
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | same script — 5 nm resampled, vector-normalized |
 | `BootstrappedData/` | **169M** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
 | `derived/ecosis/spectral_metadata_sidecar.csv` | ~1M | `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — the per-spectrum EcoSIS metadata sidecar (**2376 rows**, 66 columns). **Fixed 2026-09-23**: was 2418 rows for only 2376 unique spectra. 7 sample x treatment combinations were scanned twice about a month apart (5 Sample_IDs: 0020, 0028, 0034, 0037, 0059 = 42 replicate-level duplicates); `SpectralPredictR.R` keeps the later scan (confirmed with Zach 2026-09-15 as correct for all 7), but this script wasn't applying the same rule, so `spectra` was not a unique key and joining the sidecar to any spectral file produced 42 spurious duplicate rows. Now deduplicated to the later scan per spectrum, with an assertion so it can't regress. **Updated 2026-09-17**: now also carries per-sample x mill-treatment particle-size moments (`particle_size_mean_um`/`_variance`/`_skew`/`_kurtosis`); per-sample x dry-treatment isotope (`d13C`/`d15N`/`carbon_mg_g`/`nitrogen_IRMS_mg_g`), TPC (`phenolics_mg_g`/`_sd`), ANKOM (`hemicellulose_mg_g`/`cellulose_mg_g`/`lignin_recal_mg_g`), and fat-assay (`oil_content_mg_g`/`oil_mass_mg`) values; the full per-sample Brookside elemental panel (`nitrogen_mg_g` through `sodium_mg_g`, 13 elements); per-sample chlorophyll (`chlorophyll_1`-`5`); and per-sample leaf traits (`fresh_mass_g`/`dry_mass_g`/`water_content`/`leaf_area_cm2`/`lma_g_m2`) — see "Not used by this manuscript's analyses" below for where each is cleaned from. **Renamed 2026-09-17 (Henry)**: `carbon_pct`/`nitrogen_pct`/`oil_content_pct` → `carbon_mg_g`/`nitrogen_IRMS_mg_g`/`oil_content_mg_g`, converting all three to mg/g for unit consistency with the rest of the deposit ("IRMS" distinguishes this elemental-analyzer-derived %N from Brookside's separately-assayed `nitrogen_mg_g`). **Added 2026-09-17**: `leaf_area_cm2` (from `field_data/Mill24_LMA.xlsx` via new script `LeafAreaExtract.R`) and `lma_g_m2` (= `dry_mass_g` / `leaf_area_cm2` × 10000), joined at the Sample_ID level like the other tree-level fields. Populated only where each source has coverage (particle size: 22 samples, isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8, Brookside: 60, chlorophyll: 62, fresh/dry mass + water content: 52, leaf area/LMA: 52), NA elsewhere (expected, not a join bug). **Added 2026-09-24**: `Workflow_Calculations/code/TaxonHarmonize.R` appends `scientific_name_wfo`/`scientific_name_authorship`/`family_wfo`/`taxonomic_status_wfo`/`wfo_taxon_id`/`wfo_backbone_version` — all 14 species resolved against the WFO static backbone (v.2026.6), all `Accepted`, all populated (no NAs). Now 2376 rows, **72 columns**. See "Taxon harmonization" below. Still pending the controlled-vocabulary check noted in CLAUDE.md before calling this final. |
+
+## Sample coordinates — rebuilt from raw field records (2026-09-30)
+
+`Workflow_Calculations/code/SampleCoordinates.R` rebuilds the `X_Coord`
+(latitude) / `Y_Coord` (longitude) columns of `field_data/sample_info.csv`;
+no other column changes. The pre-rebuild file is kept as
+`field_data/sample_info_pre_coordinate_rebuild_20260930.csv`.
+
+| Source | Samples | Notes |
+|---|---|---|
+| Google Maps pins (field crew's shared "Mill24" list; snapshot `field_data/raw_coordinates/google_maps_mill24_list_20260930.txt`) | 41 | Agree with the inventory sheet to ≤ 0.06 m once corrections are applied. Two pin labels name the wrong sample (a second "0014" pin is 0013; the "0039 red cedar" pin is 0040); both are resolved by exact coordinate match. Two pins name no sample and are unused. |
+| Inventory sheet (`mill_test_inventory_data_log.xlsx`, "Field Sample Inventory") | 25 | Hand-entered. |
+
+**Corrections** (all dropped digits, each checked against the value it replaces):
+- MILL24_0006 longitude −89.932177 → −89.432177 (was ~40 km west of every other sample; the corrected point is ~10 m from this tree's LSNP24 crown center).
+- MILL24_0065 latitude 43.098408 → 43.0918408 (matches its Google Maps pin; was ~730 m north).
+- MILL24_0048 longitude −89.42121 → −89.42812 (was ~510 m east of everything; the other red pines sampled that day sit at −89.4280 to −89.4281). **No pin, crown or GPS backup exists to confirm this one** — Henry's call, 2026-09-30.
+
+**LSNP24 cross-check.** 9 trees were sampled for both this study and the
+Lakeshore Nature Preserve 2024 project on the same day (MILL24_0001/0006/0007/0008/0009/0035/0036/0037/0045
+↔ LSNP24_0004/0009/0010/0011/0013/0056/0051/0053/0059; recorded in both projects'
+field sheets). Crown centers are used only as a cross-check: 2–12 m from the
+coordinates used, except MILL24_0009 (42 m; a black locust clump, so the
+collection point and the crown center may mark different stems). The links are
+in `derived/field/cross_project_sample_links.csv`. Because each pair is the same
+tree, any model trained on both datasets (e.g. WisTraits) must keep a pair in
+the same train/test split.
 
 ## Taxon harmonization — scientific authority for species names
 

@@ -65,6 +65,19 @@ holds, is documented in `REPOSITORY_NOTES.md` rather than here.
 Two tracks share a common processing stage. Numbers are continuous; where a
 step's inputs come from an earlier step, that's noted explicitly.
 
+**0. Field metadata**
+
+0. `Workflow_Calculations/code/SampleCoordinates.R` — rebuilds each sample's
+   collection coordinates from the raw field records (the field crew's Google
+   Maps pins, saved as a dated snapshot, then the hand-entered inventory
+   sheet), corrects three documented transcription errors, cross-checks the 9
+   trees shared with the Lakeshore Nature Preserve 2024 (LSNP24) project
+   against their crown centers, and writes the coordinates into
+   `field_data/sample_info.csv`. Also writes
+   `derived/field/cross_project_sample_links.csv`, the Mill Test ↔ LSNP24
+   tree links. Linked samples are the same tree sampled the same day, so
+   keep each pair in the same split when training models on both datasets.
+
 **1. Spectral and chemistry processing** (shared by both tracks below)
 
 1. `Workflow_Calculations/code/SpectralPredictR.R` — vendored fork of
