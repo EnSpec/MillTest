@@ -32,8 +32,11 @@ qc_lib_path <- Sys.getenv("ENSPEC_QC_PATH", unset = "/Users/henryfrye/enspec/ens
 get_script_dir <- function() {
   args <- commandArgs(trailingOnly = FALSE)
   hit <- grep("^--file=", args)
-  if (length(hit) == 0) return(getwd())  # interactive/sourced fallback
-  dirname(normalizePath(sub("^--file=", "", args[hit])))
+  if (length(hit) > 0) return(dirname(normalizePath(sub("^--file=", "", args[hit]))))
+  # Interactive/sourced fallback: working directory is either the repo root
+  # (the .Rproj location) or the script's own folder.
+  code_dir <- file.path(getwd(), "Workflow_Calculations", "code")
+  if (file.exists(file.path(code_dir, "qc_config_milltest.R"))) code_dir else getwd()
 }
 
 source(file.path(qc_lib_path, "R", "trait_qc.R"))

@@ -103,6 +103,12 @@ split_path=function(path) {
   return(c(basename(path),split_path(dirname(path))))
 }
 
+# FFO accumulates the jump-corrected spectra across file formats via rbind()
+# inside the loop below. Clear it first: if this script is re-run in a session
+# that already ran it (e.g. line by line in RStudio), a leftover FFO from the
+# previous run is silently appended to, and every spectrum is written twice.
+if (exists('FFO')){rm(FFO)}
+
 for (j in c("asd","sed","sig"))
 {
   if (exists('finaloutput')){rm(finaloutput)}
@@ -156,6 +162,12 @@ for (j in c("asd","sed","sig"))
 
 FST_f=data.frame(FSTfinal)
 FST_n=data.frame(FSTfinal_norm)
+
+# Sample names are the key every downstream script joins on; fail here rather
+# than write a file that TraitSpectralQC.R (or worse, a silent join) trips on.
+stopifnot("duplicate sample_name in combined spectra -- FFO was not reset, or a
+           sample exists under more than one file format" =
+            !any(duplicated(FST_f$sample_name)))
 
 write.csv(FST_f,file.path(out_dir,"SpectralPredictR_raw_spectra.csv"),row.names=FALSE)
 # FLAG (2026-09-11): FST_n (spectrolab::normalize() output) is written here

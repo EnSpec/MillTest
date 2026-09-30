@@ -14,6 +14,39 @@ the internal/external project-history READMEs still pending (see
 CLAUDE.md "Next up" item 2) — this one documents the data for downstream
 users, not the project's own scope history.
 
+## Deposit layout (decided 2026-09-30): EcoSIS package + Zenodo data record
+
+**Why:** Kate Thompson (EcoSIS), relaying Justin, 2026-09-30: no hard size limit, but ~50 MB is getting close and ~100 MB only if absolutely required; put intermediate processing data elsewhere (GitHub etc.) and link it from the EcoSIS package; multiple related submissions are fine if the description explains how they connect. Henry's decision: **hybrid**. The spectra and their metadata go to EcoSIS regardless; everything else goes to a Zenodo data record with its own DOI, linked from the EcoSIS description (editable after publication, no new DOI). The code repo keeps its own separate Zenodo DOI. The groupings below are a proposal from that decision; confirm each assignment before assembling.
+
+**Package A: EcoSIS (target ~60-65 MB)**
+
+| File | Size | Note |
+|---|---|---|
+| `Mill24_RawSpec.csv` | 58M | Spectra (already jump-corrected despite the name; see the Must-include table). If the raw aggregate is rebuilt, regenerate everything downstream first. |
+| `derived/ecosis/spectral_metadata_sidecar.csv` and `derived/qc/*` (flag columns, removal log, QC summary) | ~3-5M | Decide whether the QC-flagged sidecar replaces the plain sidecar or ships alongside it. Regenerate after the QC re-run and the coordinate fix. |
+| `field_data/sample_info.csv` | 10K | Regenerated coordinates (MILL24_0006 fix) go in here. |
+| `ChemResults/Brookside.csv` | 54K | Observed chemistry. |
+| `particle_size/data/full/**/*.csv` | 2.1M | Raw LS 13320 exports. |
+| `spectralpredictr/DimensionsDryTraitPredictions.csv` | 1.6M | Small and used by the manuscript's RMSE analysis; proposed to stay with the spectra (could move to Package B). |
+| Deposit README (`derived/README_mill_test_chemistry_and_spectroscopy.txt`) | small | Must be rewritten for the split: state what is in this package, and point to Package B by DOI in the EcoSIS description (not in the README file, which locks after deposit). |
+
+**Package B: Zenodo data record (own DOI; ~400 MB without the .asd files, ~500 MB with them)**
+
+| File | Size | Note |
+|---|---|---|
+| `LeafScans/**/*.jpg` (incl. `PlantID/`) | 62M | Decided 2026-09-17 to include all of them. |
+| `spectralpredictr/SpectralPredictR_raw_spectra.csv` | 49M | Regenerable intermediate. |
+| `spectralpredictr/SpectralPredictR_VN_jumpcorrected_spectra.csv` | 93M | Regenerable intermediate; `DataJoin.R` reads it. |
+| `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | Regenerable intermediate. |
+| `BootstrappedData/` | 169M | Exhaustive 36-pair enumeration output (name is stale; see the to-do rename). |
+| `DrySpec/{FreezeDried,OvenDried}/*.asd` | 102M | Optional raw instrument files (2418 files); more justified if the aggregate step re-extracts from them. |
+| Raw source sheets (LMA, chlorophyll, ANKOM, TPC, etc.) and the "Collected but not used" groups below | small | Not yet assigned; decide per file group whether small tabular data belongs with the spectra (Package A) or with the archive (Package B). |
+| Package B README | small | Describes provenance of each file and points back to the EcoSIS package DOI. |
+
+**Cross-links to set once both DOIs exist:** EcoSIS description (short DOI list: Zenodo data record, protocol DOIs, later the paper); Zenodo record "related identifiers" (EcoSIS package, code repo); `CITATION.cff` (EcoSIS and data-record DOIs as related); manuscript Data availability (EcoSIS, data record, code repo). Order: EcoSIS package and data record first, then finalize `CITATION.cff`, then tag the code release.
+
+**To do for the split:** restructure this manifest's tables to carry a `Package` column (A/B); split the deposit assembly (zip/build step) into two outputs; write the two READMEs; re-run QC and the coordinate regeneration before building Package A; check the final Package A size against Kate's ~50-100 MB guidance and ask her whether ~60 MB is acceptable or whether to split by drying method.
+
 ## Must include — primary measurements, not regenerable from anything else
 
 | File | Size | What it is |

@@ -13,12 +13,13 @@
 #     mapping Code -> a free-text Plant.ID). Parsing logic here matches
 #     chemistry-sample-handling/code/chemistry_comparison_results.R, which
 #     reads these same two files for a different (treatment-comparison)
-#     analysis.
+#     analysis. This batch was run by Erin A. Pierce and Cole Willems.
 #  2. A needle-leaved-conifer batch (samples 035-066), which was run later
 #     and lives ONLY in chemistry-sample-handling's raw_chem_inputs --
 #     never copied into Mill24 at all. Simpler shape: one "TPC clean" sheet
 #     per treatment, `Label` IS the sample number directly, no separate
-#     metadata sheet needed.
+#     metadata sheet needed. This batch was run by Ethan Kanski and 
+#     Gabriela Donnangelo.
 #
 # Author: Mill Test Team, 2026 cleanup
 #

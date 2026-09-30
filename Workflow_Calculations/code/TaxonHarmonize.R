@@ -190,3 +190,4 @@ message(sprintf("\nSidecar updated in place: %d rows x %d columns (was %d column
                 nrow(sidecar_annotated), ncol(sidecar_annotated), ncol(sidecar)))
 message(sprintf("Taxon table -> %s",
                 file.path(out_dir, "taxon_harmonized_mill_test.csv")))
+
