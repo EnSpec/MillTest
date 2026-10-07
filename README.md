@@ -150,7 +150,14 @@ step's inputs come from an earlier step, that's noted explicitly.
     `Workflow_Calculations/code/SpectralDifferenceCurves.R` — regenerate the
     manuscript's spectral-difference-by-region table and full-resolution
     difference curves, both directly from step 11's output.
-14. `Workflow_Visualization/Map_Visualization.R` — sample collection-location
+14. `Workflow_Calculations/code/SpectralDifferenceNormalized.R` and
+    `Workflow_Calculations/code/GrindVariancePartition.R` — supplement
+    analyses. The first redraws step 12's difference-spectrum figure on
+    vector-normalized spectra; the second partitions spectral variance among
+    individuals, drying, milling and replicate scans under no transform, VN
+    and SNV, and writes the supplement table. Both read
+    `spectralpredictr/SpectralPredictR_raw_spectra.csv`.
+15. `Workflow_Visualization/Map_Visualization.R` — sample collection-location
     map. Reads `sample_info.csv` only; independent of every other step.
 
 Everything under `*/archive/` is superseded and not part of this run order —
