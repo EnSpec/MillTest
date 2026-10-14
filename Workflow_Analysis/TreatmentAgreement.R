@@ -142,14 +142,28 @@ cell_agreement <- chem_long %>%
       tibble(mean_obs  = mean(.x$Observed),
              mean_pred = mean(.x$Predicted),
              rmse      = sqrt(mean(d^2)),
-             # RMSE^2 = bias^2 + scatter^2 (population SD of the error)
+             # RMSE^2 = bias^2 + scatter^2 (population SD of the error).
+             # "scatter" is the bias-corrected error SD (SEP in chemometrics)
+             # and still contains proportionality (slope) error.
              scatter   = sqrt(mean((d - mean(d))^2)),
-             obs_range = diff(range(.x$Observed)))
+             obs_range = diff(range(.x$Observed)),
+             # Willmott (1981) / Robeson & Willmott (2023) frame: regress
+             # predicted on observed. MSE = bias^2 + proportionality +
+             # unsystematic, where scatter^2 = proportionality + unsystematic.
+             slope_pred_on_obs = unname(coef(lm(Predicted ~ Observed,
+                                                data = .x))[2]),
+             mse_prop  = (slope_pred_on_obs - 1)^2 *
+               mean((.x$Observed - mean(.x$Observed))^2),
+             mse_unsys = mean(resid(lm(Predicted ~ Observed, data = .x))^2))
     )
   }) %>%
   ungroup() %>%
   mutate(nrmse = rmse / obs_range,
-         bias_share_of_mse = bias^2 / rmse^2)
+         bias_share_of_mse = bias^2 / rmse^2,
+         prop_share_of_mse = mse_prop / rmse^2,
+         unsys_share_of_mse = mse_unsys / rmse^2,
+         rmse_unsys = sqrt(mse_unsys),
+         nrmse_unsys = rmse_unsys / obs_range)
 
 print(cell_agreement %>%
         select(Trait, Drying, Milling, n, ccc, ccc_lo, ccc_hi, r, Cb, bias,
