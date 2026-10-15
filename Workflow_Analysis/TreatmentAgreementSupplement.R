@@ -11,12 +11,12 @@
 # manuscript's supplement order:
 #
 #   Tables  (treatment_agreement_supplement_tables.docx)
-#     T1  Agreement with the OD 20-mesh reference, per treatment cell
-#     T2  Measured FF - OD offsets (isotope pairs)
-#     T3  Break-even reference offsets vs measured / proxy offsets
-#     T4  Within-tree FF - OD shift in N: predicted vs measured
-#     T5  IRMS vs Brookside nitrogen on the same oven-dried trees
-#     T6  Reference-free treatment contrasts (predicted values)
+#     T1  Agreement with the OD 20-mesh reference, per treatment cell,
+#         with the break-even range for FF rows
+#     T2  Paired isotope trees: A measured FF - OD offsets, B predicted vs
+#         measured FF - OD N shift, C IRMS vs Brookside N
+#   (break_even_vs_measured.csv and treatment_contrast_concordance.csv
+#    remain available as CSVs but are not tabulated)
 #   Figures (PNG, 300 dpi)
 #     F1  Break-even curves (nitrogen, calcium)
 #     F2  Bland-Altman plots per treatment cell
@@ -55,7 +55,17 @@ yn  <- function(x) ifelse(x, "Yes", "No")
 
 # --- tables ---------------------------------------------------------------
 
+# Break-even range (FF rows only): offsets over which FF error stays below OD
+be_rng <- bem %>% distinct(Trait, Milling, delta_lo, delta_hi) %>%
+  mutate(Drying = "FF",
+         `Break-even range (mg/g)` = sprintf("%.1f to %.1f", delta_lo, delta_hi))
+
 t1 <- cell %>%
+  left_join(be_rng %>% select(Trait, Milling, Drying, `Break-even range (mg/g)`),
+            join_by(Trait, Milling, Drying)) %>%
+  mutate(`Break-even range (mg/g)` =
+           ifelse(is.na(`Break-even range (mg/g)`), "—",
+                  `Break-even range (mg/g)`)) %>%
   arrange(Trait, Drying, Milling) %>%
   transmute(Trait,
             Drying  = dry_lab[Drying],
@@ -71,58 +81,40 @@ t1 <- cell %>%
             `Accuracy (Cb)`    = f2(Cb),
             `CCC (95% CI)`     = ci(ccc, ccc_lo, ccc_hi),
             `95% limits of agreement (mg/g)` =
-              sprintf("%.1f to %.1f", loa_lo, loa_hi))
-
-t2 <- off %>%
-  transmute(Measure = measure, n,
-            `Oven-dried mean` = f1(mean_od),
-            `Freeze-dried mean` = f1(mean_ff),
-            `FF − OD (95% CI)` = ci(offset, offset_lo, offset_hi, 2),
-            `Relative FF − OD, % (95% CI)` =
-              sprintf("%.1f (%.1f, %.1f)", 100 * rel_offset, 100 * rel_lo,
-                      100 * rel_hi),
-            `Paired t-test p` = ifelse(p_value < 0.001, "<0.001", f2(p_value)),
-            `Trees lower in FF` = paste0(n_negative, " of ", n))
-
-t3 <- bem %>%
-  arrange(Trait, scenario, Milling) %>%
-  transmute(Trait,
-            Milling = mill_lab[Milling],
-            `FF beats OD for offsets (mg/g)` =
-              sprintf("%.1f to %.1f", delta_lo, delta_hi),
-            `Offset estimate` = scenario,
-            `Offset (95% CI, mg/g)` = ci(delta, lo, hi, 2),
-            `Point estimate inside` = yn(point_inside),
-            `Whole CI inside` = yn(ci_inside),
-            `FF NRMSE as analysed (%)` = pct(nrmse_ff),
-            `FF NRMSE at offset (%)` = pct(nrmse_ff_at_delta),
-            `OD NRMSE (%)` = pct(nrmse_od))
-
-t4 <- within %>%
-  transmute(Milling = mill_lab[Milling], n,
-            `Predicted FF − OD (mg/g)` = f2(mean_predicted_shift),
-            `Measured FF − OD (mg/g)`  = f2(mean_measured_shift),
-            `Predicted − measured (95% CI)` =
-              ci(mean_error, error_lo, error_hi, 2),
-            `CCC across trees (95% CI)` = ci(ccc, ccc_lo, ccc_hi, 2))
-
-t5 <- irms %>%
-  transmute(n,
-            `IRMS − Brookside bias (mg/g)` = f2(bias_irms_minus_brookside),
-            `95% limits of agreement (mg/g)` =
               sprintf("%.1f to %.1f", loa_lo, loa_hi),
-            `CCC (95% CI)` = ci(ccc, ccc_lo, ccc_hi, 2),
-            `Precision (ρ)` = f2(r), `Accuracy (Cb)` = f2(Cb))
+            `Break-even range (mg/g)`)
 
-t6 <- contr %>%
-  transmute(Trait,
-            Contrast = paste0(sub("_", " ", a), " vs ", sub("_", " ", b)),
-            Type = type, n,
-            `CCC (95% CI)` = ci(ccc, ccc_lo, ccc_hi, 2),
-            `Accuracy (Cb)` = f2(Cb),
-            `Mean difference a − b (mg/g)` = f2(bias_a_minus_b),
-            `95% limits of agreement (mg/g)` =
-              sprintf("%.1f to %.1f", loa_lo, loa_hi))
+# Table 2: three panels, all from the 11 paired isotope trees
+tq <- function(n) qt(0.975, n - 1)
+t2a <- off %>%
+  transmute(Panel = "A. Measured FF − OD (ball milled, IRMS)",
+            Comparison = measure, n,
+            `Mean, group 1` = f1(mean_od), `Mean, group 2` = f1(mean_ff),
+            `Difference (95% CI)` = ci(offset, offset_lo, offset_hi, 2),
+            Note = sprintf("%d of %d trees lower in FF; relative %.1f%% (%.1f, %.1f); p %s",
+                           n_negative, n, 100 * rel_offset, 100 * rel_lo,
+                           100 * rel_hi,
+                           ifelse(p_value < 0.001, "<0.001",
+                                  formatC(p_value, digits = 3, format = "f"))))
+t2b <- within %>%
+  transmute(Panel = "B. Predicted vs measured FF − OD nitrogen",
+            Comparison = paste("N,", mill_lab[Milling]), n,
+            `Mean, group 1` = f2(mean_predicted_shift),
+            `Mean, group 2` = f2(mean_measured_shift),
+            `Difference (95% CI)` = ci(mean_error, error_lo, error_hi, 2),
+            Note = sprintf("CCC across trees %s", ci(ccc, ccc_lo, ccc_hi, 2)))
+t2c <- irms %>%
+  transmute(Panel = "C. IRMS vs Brookside nitrogen (oven-dried)",
+            Comparison = "N, IRMS (ball) vs Brookside (20 mesh)", n,
+            `Mean, group 1` = "", `Mean, group 2` = "",
+            `Difference (95% CI)` =
+              ci(bias_irms_minus_brookside,
+                 bias_irms_minus_brookside - tq(n) * sd_diff / sqrt(n),
+                 bias_irms_minus_brookside + tq(n) * sd_diff / sqrt(n), 2),
+            Note = sprintf("95%% limits of agreement %.1f to %.1f; CCC %s",
+                           loa_lo, loa_hi, ci(ccc, ccc_lo, ccc_hi, 2)))
+t2 <- bind_rows(t2a, t2b, t2c) %>%
+  rename(`Group 1` = `Mean, group 1`, `Group 2` = `Mean, group 2`)
 
 style_ft <- function(d) {
   flextable(d) %>%
@@ -138,12 +130,8 @@ style_ft <- function(d) {
 landscape <- prop_section(page_size = page_size(orient = "landscape"),
                           type = "continuous")
 save_as_docx(
-  "T1. Agreement of predicted values with the oven-dried 20-mesh reference chemistry, per treatment cell (n = 60 trees per cell)" = style_ft(t1),
-  "T2. Measured freeze-dried minus oven-dried offsets in ball-milled material (IRMS, n = 11 paired trees)" = style_ft(t2),
-  "T3. Range of reference offset over which freeze-dried error stays below oven-dried error, compared with measured and proxy offsets" = style_ft(t3),
-  "T4. Predicted vs measured freeze-dried minus oven-dried nitrogen on the same 11 trees" = style_ft(t4),
-  "T5. IRMS (oven-dried, ball milled) vs Brookside (oven-dried, 20 mesh) nitrogen on the same trees" = style_ft(t5),
-  "T6. Agreement between treatments in predicted values (reference-free)" = style_ft(t6),
+  "Table 1. Agreement of predicted values with the oven-dried 20-mesh reference chemistry, per treatment cell (n = 60 trees per cell). Break-even range: reference offsets over which freeze-dried error stays below oven-dried error." = style_ft(t1),
+  "Table 2. Paired freeze-dried (FF) and oven-dried (OD) measurements on 11 trees. Panel A: group 1 = OD, group 2 = FF (mg/g). Panel B: group 1 = predicted FF − OD, group 2 = measured FF − OD (mg/g). Panel C: IRMS minus Brookside." = style_ft(t2),
   path = file.path(dir_in, "treatment_agreement_supplement_tables.docx"),
   pr_section = landscape)
 
