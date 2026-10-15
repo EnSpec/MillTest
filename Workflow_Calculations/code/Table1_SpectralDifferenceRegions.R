@@ -8,6 +8,9 @@
 # point difference by spectral region, treatment comparison, and growth
 # form) directly from BootstrappedData/ in R, replacing the hand-typed LaTeX
 # table (Zach Breuer, Nov 2025) to remove any risk of transcription error.
+# Cells are mean +/- the half-width of the t-based 95% CI across trees
+# (n = 61 all, 30 broadleaf, 31 needle-leaved); SD, n and the typical
+# within-tree replicate-pair SD are in table1_spectral_regions_long.csv.
 #
 # Author: Mill Test Team, 2026 cleanup
 #
@@ -90,12 +93,19 @@ read_one <- function(path) {
     cols <- wl_cols[wls >= rng[1] & wls <= rng[2]]
     mean(as.matrix(d[, cols]), na.rm = TRUE) * 100
   })
+  # Spread of the 36 replicate-pair differences within this sample: each
+  # row's mean over the region's wavelengths, then the SD across the 36 rows.
+  region_rep_sd <- map_dbl(regions, function(rng) {
+    cols <- wl_cols[wls >= rng[1] & wls <= rng[2]]
+    sd(rowMeans(as.matrix(d[, cols]), na.rm = TRUE) * 100)
+  })
 
   tibble(
     Sample_ID  = sample_id,
     Comparison = comparison,
     Region     = names(regions),
-    Value      = region_means
+    Value      = region_means,
+    Rep_SD     = region_rep_sd
   )
 }
 
@@ -117,10 +127,17 @@ cat(sprintf("Restricted to the 61-individual design population: %d -> %d samples
 # --- aggregate: All Data / Broadleaf / Conifer, for each comparison x region
 
 summarise_group <- function(df, group_label) {
+  # Uncertainty: trees are the unit of replication. SD and the t-based 95% CI
+  # of the mean are across the per-tree values (n = trees in the group);
+  # Rep_SD is the typical within-tree SD of the 36 replicate-pair differences.
   df %>%
     group_by(Comparison, Region) %>%
-    summarise(Value = mean(Value), .groups = "drop") %>%
-    mutate(Group = group_label)
+    summarise(n = n(), SD = sd(Value), Rep_SD = mean(Rep_SD),
+              Value = mean(Value), .groups = "drop") %>%
+    mutate(SE = SD / sqrt(n),
+           CI_halfwidth = qt(0.975, n - 1) * SE,
+           CI_lo = Value - CI_halfwidth, CI_hi = Value + CI_halfwidth,
+           Group = group_label)
 }
 
 broadleaf_summary <- summarise_group(filter(per_sample_region, Type == "Broadleaf"), "Broadleaved")
@@ -156,12 +173,10 @@ write.csv(table1_wide, file.path(out_dir, "table1_spectral_regions_wide.csv"), r
 
 # --- LaTeX table, same layout as Zach's original hand-typed version --------
 
-fmt <- function(x) sprintf("%.2f", x)
 v <- function(comparison, group, region) {
-  table1_long %>%
-    filter(Comparison == comparison, Group == group, Region == region) %>%
-    pull(Value) %>%
-    fmt()
+  r <- table1_long %>%
+    filter(Comparison == comparison, Group == group, Region == region)
+  sprintf("%.2f $\\pm$ %.2f", r$Value, r$CI_halfwidth)
 }
 
 tex_lines <- c(
@@ -229,19 +244,26 @@ comparisons_ordered <- c("Ball - Coarse", "Ball - Fine", "Fine - Coarse", "Freez
 groups_ordered <- c("All Data", "Broadleaved", "Needle-Leaved")
 
 docx_wide <- table1_long %>%
-  mutate(Value = round(Value, 2),
+  mutate(Cell = sprintf("%.2f ± %.2f", Value, CI_halfwidth),
          col = paste(Comparison, Group, sep = " | ")) %>%
-  select(Region, col, Value) %>%
-  pivot_wider(names_from = col, values_from = Value) %>%
+  select(Region, col, Cell) %>%
+  pivot_wider(names_from = col, values_from = Cell) %>%
   arrange(Region)
 
 data_cols <- as.vector(outer(groups_ordered, comparisons_ordered,
                               function(g, c) paste(c, g, sep = " | ")))
 docx_wide <- docx_wide %>% select(Region, all_of(data_cols))
 
-bottom_labels <- setNames(as.list(rep(groups_ordered, length(comparisons_ordered))), data_cols)
+n_by_group <- table1_long %>% distinct(Group, n) %>%
+  mutate(label = sprintf("%s\n(n = %d)", Group, n)) %>%
+  { setNames(.$label, as.character(.$Group)) }
+bottom_labels <- setNames(as.list(rep(unname(n_by_group[groups_ordered]),
+                                      length(comparisons_ordered))), data_cols)
 bottom_labels$Region <- "Spectral Region"
 
+# Fixed-layout table with explicit widths: 1.5 in label column + 12 x 0.7 in
+# = 9.9 in, inside the 10 in of a US Letter landscape page with 0.5 in margins.
+# (Auto-fit let long labels widen the table past the page edge.)
 ft <- flextable(docx_wide) %>%
   set_header_labels(values = bottom_labels) %>%
   add_header_row(
@@ -250,30 +272,32 @@ ft <- flextable(docx_wide) %>%
     top = TRUE
   ) %>%
   merge_v(j = 1, part = "header") %>%
+  set_table_properties(layout = "fixed") %>%
   align(align = "center", part = "all") %>%
   align(j = 1, align = "left", part = "all") %>%
-  valign(valign = "center", part = "header") %>%
+  valign(valign = "center", part = "all") %>%
   bold(part = "header") %>%
   border_remove() %>%
   hline(part = "all", border = fp_border(width = 0.75)) %>%
   vline(j = 1, border = fp_border(width = 0.75)) %>%
   vline(j = seq(4, length(data_cols), by = 3) + 1, border = fp_border(width = 0.75)) %>%
-  fontsize(size = 9, part = "all") %>%
-  width(j = 1, width = 1.4) %>%
+  fontsize(size = 7.5, part = "all") %>%
+  padding(padding.left = 2, padding.right = 2, part = "all") %>%
+  width(j = 1, width = 1.5) %>%
   width(j = 2:(length(data_cols) + 1), width = 0.7)
 
-# 13 columns don't fit a portrait page at a readable font size -- landscape,
-# same fix as the LaTeX version's adjustbox{width=1\textwidth} scaling.
 landscape_section <- prop_section(
-  page_size = page_size(orient = "landscape"),
+  page_size = page_size(orient = "landscape", width = 11, height = 8.5),
   page_margins = page_mar(bottom = 0.75, top = 0.75, right = 0.5, left = 0.5)
 )
 
-save_as_docx(ft, path = file.path(out_dir, "table1.docx"), pr_section = landscape_section)
+# TABLE1_DOCX overrides the file name (e.g. when the default is open in Word)
+docx_path <- file.path(out_dir, Sys.getenv("TABLE1_DOCX", unset = "table1.docx"))
+save_as_docx(ft, path = docx_path, pr_section = landscape_section)
 
 print(as.data.frame(table1_wide))
 cat(sprintf("\nWrote %s, %s, %s, %s\n",
            file.path(out_dir, "table1_spectral_regions_long.csv"),
            file.path(out_dir, "table1_spectral_regions_wide.csv"),
            file.path(out_dir, "table1.tex"),
-           file.path(out_dir, "table1.docx")))
+           docx_path))
