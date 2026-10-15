@@ -116,23 +116,41 @@ t2c <- irms %>%
 t2 <- bind_rows(t2a, t2b, t2c) %>%
   rename(`Group 1` = `Mean, group 1`, `Group 2` = `Mean, group 2`)
 
-style_ft <- function(d) {
+# Fixed-layout tables with explicit widths so they fit the landscape page
+# (letter 11 x 8.5 in, 0.5 in margins -> 10 in of usable width).
+style_ft <- function(d, widths, size = 8) {
+  stopifnot(length(widths) == ncol(d), sum(widths) <= 10)
   flextable(d) %>%
+    set_table_properties(layout = "fixed") %>%
+    width(j = seq_along(widths), width = widths) %>%
     align(align = "center", part = "all") %>%
     align(j = 1, align = "left", part = "all") %>%
-    valign(valign = "center", part = "header") %>%
+    valign(valign = "center", part = "all") %>%
     border_remove() %>%
     hline(part = "all", border = fp_border(width = 0.75)) %>%
-    fontsize(size = 9, part = "all") %>%
-    autofit()
+    fontsize(size = size, part = "all") %>%
+    padding(padding.left = 2, padding.right = 2, part = "all")
 }
 
-landscape <- prop_section(page_size = page_size(orient = "landscape"),
-                          type = "continuous")
+# Table 1: 15 columns
+w1 <- c(0.65, 0.7, 0.7,          # trait, drying, milling
+        0.5, 0.5, 0.5, 0.55,     # RMSE, NRMSE, bias, slope
+        0.55, 0.7, 0.7,          # MSE shares
+        0.5, 0.5, 0.95,          # rho, Cb, CCC (CI)
+        0.95, 0.95)              # limits of agreement, break-even range
+# Table 2: 7 columns
+w2 <- c(1.9, 1.9, 0.4, 0.7, 0.7, 1.5, 2.9)
+
+landscape <- prop_section(
+  page_size = page_size(orient = "landscape", width = 11, height = 8.5),
+  page_margins = page_mar(left = 0.5, right = 0.5, top = 0.7, bottom = 0.7),
+  type = "continuous")
 save_as_docx(
-  "Table 1. Agreement of predicted values with the oven-dried 20-mesh reference chemistry, per treatment cell (n = 60 trees per cell). Break-even range: reference offsets over which freeze-dried error stays below oven-dried error." = style_ft(t1),
-  "Table 2. Paired freeze-dried (FF) and oven-dried (OD) measurements on 11 trees. Panel A: group 1 = OD, group 2 = FF (mg/g). Panel B: group 1 = predicted FF − OD, group 2 = measured FF − OD (mg/g). Panel C: IRMS minus Brookside." = style_ft(t2),
-  path = file.path(dir_in, "treatment_agreement_supplement_tables.docx"),
+  "Table 1. Agreement of predicted values with the oven-dried 20-mesh reference chemistry, per treatment cell (n = 60 trees per cell). Break-even range: reference offsets over which freeze-dried error stays below oven-dried error." = style_ft(t1, w1),
+  "Table 2. Paired freeze-dried (FF) and oven-dried (OD) measurements on 11 trees. Panel A: group 1 = OD, group 2 = FF (mg/g). Panel B: group 1 = predicted FF − OD, group 2 = measured FF − OD (mg/g). Panel C: IRMS minus Brookside." = style_ft(t2, w2),
+  # SUPP_DOCX overrides the file name (e.g. when the default is open in Word)
+  path = file.path(dir_in, Sys.getenv("SUPP_DOCX",
+                                      unset = "treatment_agreement_supplement_tables.docx")),
   pr_section = landscape)
 
 # --- figures --------------------------------------------------------------
