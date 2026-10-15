@@ -127,6 +127,10 @@ chem_long <- predicted %>%
                             values_to = "Observed"),
              join_by(Sample_ID, Trait))
 
+# Per-tree values behind every cell; read by TreatmentAgreementSupplement.R
+write.csv(chem_long, file.path(out_dir, "per_tree_predicted_vs_observed.csv"),
+          row.names = FALSE)
+
 isotope <- read.csv(file.path(data_root, "derived", "isotope",
                               "isotope_mill_test.csv"))
 
