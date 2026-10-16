@@ -131,6 +131,15 @@ step's inputs come from an earlier step, that's noted explicitly.
 9. `Workflow_Analysis/ChemistryAnalysis.R` — observed (Brookside wet
    chemistry) vs. predicted nitrogen/calcium by treatment: per-treatment
    linear fits, RMSE/NRMSE, and a variance-partitioning analysis.
+   `Workflow_Analysis/TreatmentAgreement.R` then re-examines those
+   predictions against the common oven-dried 20-mesh reference: MSE split
+   into bias / proportionality / unsystematic error, Lin's concordance
+   correlation coefficient, Bland–Altman limits of agreement, and a
+   break-even sensitivity analysis of the reference offset using the paired
+   freeze-dried / oven-dried isotope measurements (step 4's
+   `IsotopeExtract.R`). `Workflow_Analysis/TreatmentAgreementSupplement.R`
+   formats its outputs as the supplement Word tables and PNG figures. Both
+   write to `derived/treatment_agreement/`; they need steps 1 and 4.
 10. `Workflow_Analysis/Predicted_Trait_Analysis.R` — Bayesian ANOVA (`brms`)
     of predicted N and Ca as a function of milling × drying, with nested
     species / individual / measurement-replicate random intercepts; 4 chains
