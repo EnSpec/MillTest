@@ -148,8 +148,14 @@ step's inputs come from an earlier step, that's noted explicitly.
     step 11's output.
 13. `Workflow_Calculations/code/Table1_SpectralDifferenceRegions.R` and
     `Workflow_Calculations/code/SpectralDifferenceCurves.R` — regenerate the
-    manuscript's spectral-difference-by-region table and full-resolution
+    manuscript's spectral-difference-by-region table (cells are the mean ±
+    the half-width of the 95% CI across trees) and full-resolution
     difference curves, both directly from step 11's output.
+    `Workflow_Calculations/code/ParticleSizeGrowthFormConfound.R` — because
+    broadleaved samples were milled to 60 mesh and needle-leaved to 40,
+    regresses each tree's fine − coarse spectral difference on its
+    reduction in mean particle size plus a growth-form term; needs step 3
+    (particle size) and step 11. Writes to `derived/spectral_difference/`.
 14. `Workflow_Visualization/Map_Visualization.R` — sample collection-location
     map. Reads `sample_info.csv` only; independent of every other step.
 
