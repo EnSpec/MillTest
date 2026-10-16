@@ -85,20 +85,32 @@ decompose <- function(model, trait_label) {
               share_hi = q(share)[3], .groups = "drop") %>%
     mutate(trait = trait_label, .before = 1)
 
-  extra <- tibble(
-    trait = trait_label,
-    component = c("SD of drying marginal means (OD, FF)",
-                  "SD of milling marginal means (coarse, ball, fine)",
-                  "Species SD / treatment-cell SD"),
-    sd_med = c(median(sqrt(pop_var(dry_means))),
-               median(sqrt(pop_var(mill_means))),
-               median(sqrt(comp$Species) / sqrt(comp$Treatment_all_cells))),
-    sd_lo = c(quantile(sqrt(pop_var(dry_means)), 0.025),
-              quantile(sqrt(pop_var(mill_means)), 0.025),
-              quantile(sqrt(comp$Species) / sqrt(comp$Treatment_all_cells), 0.025)),
-    sd_hi = c(quantile(sqrt(pop_var(dry_means)), 0.975),
-              quantile(sqrt(pop_var(mill_means)), 0.975),
-              quantile(sqrt(comp$Species) / sqrt(comp$Treatment_all_cells), 0.975)))
+  qs <- function(x) c(med = median(x), lo = quantile(x, 0.025, names = FALSE),
+                      hi = quantile(x, 0.975, names = FALSE))
+  mk <- function(label, sd = NULL, share = NULL, ratio = NULL) {
+    tibble(trait = trait_label, component = label,
+           sd_med = if (!is.null(sd)) qs(sd)[1] else NA_real_,
+           sd_lo = if (!is.null(sd)) qs(sd)[2] else NA_real_,
+           sd_hi = if (!is.null(sd)) qs(sd)[3] else NA_real_,
+           share_med = if (!is.null(share)) qs(share)[1] else NA_real_,
+           share_lo = if (!is.null(share)) qs(share)[2] else NA_real_,
+           share_hi = if (!is.null(share)) qs(share)[3] else NA_real_,
+           ratio_med = if (!is.null(ratio)) qs(ratio)[1] else NA_real_,
+           ratio_lo = if (!is.null(ratio)) qs(ratio)[2] else NA_real_,
+           ratio_hi = if (!is.null(ratio)) qs(ratio)[3] else NA_real_)
+  }
+  proc_var <- comp$Treatment_all_cells + comp$Combination
+  extra <- bind_rows(
+    mk("SD of drying marginal means (OD, FF)", sd = sqrt(pop_var(dry_means))),
+    mk("SD of milling marginal means (coarse, ball, fine)",
+       sd = sqrt(pop_var(mill_means))),
+    # processing-related = treatment + tree x treatment combination
+    mk("Treatment + tree x combination (processing-related)",
+       sd = sqrt(proc_var), share = proc_var / comp$total),
+    mk("Species SD / treatment-cell SD",
+       ratio = sqrt(comp$Species) / sqrt(comp$Treatment_all_cells)),
+    mk("(Treatment + combination) variance / tree variance",
+       ratio = proc_var / comp$Tree))
   bind_rows(summ, extra)
 }
 
