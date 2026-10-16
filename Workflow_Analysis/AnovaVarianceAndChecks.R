@@ -108,6 +108,7 @@ write.csv(vd, file.path(out_dir, "variance_decomposition.csv"), row.names = FALS
 # figure: variance shares with 95% intervals
 share_plot <- vd %>%
   filter(!is.na(share_med)) %>%
+  mutate(trait = factor(trait, levels = c("Nitrogen", "Calcium"))) %>%
   mutate(component = factor(component,
            levels = rev(c("Species", "Tree", "Combination",
                           "Treatment_all_cells", "Residual")),
@@ -125,31 +126,38 @@ ggsave(file.path(out_dir, "variance_shares.png"), p_share,
        width = 8, height = 3.6, dpi = 300, bg = "white")
 
 # --- 2. posterior predictive checks ------------------------------------------
+# One supplement figure: columns = traits, rows = overall / by drying / by
+# milling. Dark line = observed, light lines = posterior-predictive draws.
 
 set.seed(112)
-for (nm in names(models)) {
-  m <- models[[nm]]
+ppc_panels <- imap(models, function(m, nm) {
   lab <- bquote(.(tolower(traits[[nm]])) ~ "(mg g"^-1*")")
-  pa <- pp_check(m, type = "dens_overlay", ndraws = 100) +
-    labs(x = lab, y = "Density")
-  pb <- pp_check(m, type = "dens_overlay_grouped", group = "DryTreat",
-                 ndraws = 50) + labs(x = lab, y = "Density")
-  pc <- pp_check(m, type = "dens_overlay_grouped", group = "MillTreat",
-                 ndraws = 50) + labs(x = lab, y = "Density")
-  g <- plot_grid(pa, pb, pc, ncol = 1, labels = "AUTO")
-  ggsave(file.path(out_dir, paste0("ppc_", nm, ".png")), g,
-         width = 7, height = 10, dpi = 300, bg = "white")
-}
+  mk <- function(type, group = NULL, n = 100) {
+    pp_check(m, type = type, group = group, ndraws = n) +
+      labs(x = lab, y = "Density") + theme(legend.position = "none")
+  }
+  list(mk("dens_overlay"),
+       mk("dens_overlay_grouped", "DryTreat", 50),
+       mk("dens_overlay_grouped", "MillTreat", 50))
+})
+col_title <- function(txt) ggdraw() + draw_label(txt, fontface = "bold", size = 12)
+ppc_grid <- plot_grid(
+  col_title("Nitrogen"), col_title("Calcium"),
+  plot_grid(plotlist = ppc_panels$nitrogen, ncol = 1, labels = c("A", "C", "E")),
+  plot_grid(plotlist = ppc_panels$calcium,  ncol = 1, labels = c("B", "D", "F")),
+  ncol = 2, rel_heights = c(0.05, 1))
+ggsave(file.path(out_dir, "ppc_combined.png"), ppc_grid,
+       width = 11, height = 10, dpi = 300, bg = "white")
 
 # --- 3. coefficient figure with corrected labels ----------------------------
 
 coef_labels <- c(
   b_Intercept                  = "Intercept",
-  b_MillTreatBALL              = "Ball Mill",
-  b_MillTreatFINE              = "Fine Rotary",
-  b_DryTreatFF                 = "Flash freezing",
-  `b_MillTreatBALL:DryTreatFF` = "Ball Mill / Flash-freeze interaction",
-  `b_MillTreatFINE:DryTreatFF` = "Fine Rotary / Flash-freeze interaction",
+  b_MillTreatBALL              = "Ball mill",
+  b_MillTreatFINE              = "Fine mesh (40/60)",
+  b_DryTreatFF                 = "Freeze-dried",
+  `b_MillTreatBALL:DryTreatFF` = "Ball mill / Freeze-dried interaction",
+  `b_MillTreatFINE:DryTreatFF` = "Fine mesh / Freeze-dried interaction",
   sd_Species_Code__Intercept                       = "Species random effect s.d.",
   `sd_Species_Code:SampleID__Intercept`            = "Individual (within species) random effect s.d.",
   `sd_Species_Code:SampleID:measure_id__Intercept` = "Tree x treatment combination random effect s.d.",
@@ -164,4 +172,38 @@ for (nm in names(models)) {
            xlab = expression("Coefficient or s.d. (mg g"^-1*")"))
   dev.off()
 }
+# --- 4. manuscript figure: treatment contrasts + variance shares -------------
+# A: posterior median and 95% interval of the five treatment coefficients
+#    (reference = oven-dried, 20-mesh); B: variance shares from section 1.
+
+coef_lab <- c(b_DryTreatFF                 = "Freeze-dried",
+              b_MillTreatBALL              = "Ball mill",
+              b_MillTreatFINE              = "Fine mesh (40/60)",
+              `b_MillTreatBALL:DryTreatFF` = "Ball mill \u00d7 freeze-dried",
+              `b_MillTreatFINE:DryTreatFF` = "Fine mesh \u00d7 freeze-dried")
+coef_draws <- imap_dfr(models, function(m, nm) {
+  d <- as.data.frame(m)[, names(coef_lab)]
+  pivot_longer(d, everything(), names_to = "term", values_to = "value") %>%
+    mutate(trait = traits[[nm]])
+})
+coef_sum <- coef_draws %>%
+  group_by(trait, term) %>%
+  summarise(med = median(value), lo = quantile(value, 0.025),
+            hi = quantile(value, 0.975), .groups = "drop") %>%
+  mutate(term = factor(coef_lab[term], levels = rev(unname(coef_lab))),
+         trait = factor(trait, levels = c("Nitrogen", "Calcium")))
+
+p_coef <- ggplot(coef_sum, aes(med, term)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_pointrange(aes(xmin = lo, xmax = hi), color = "#0072B2") +
+  facet_wrap(~ trait) +
+  labs(x = expression("Effect relative to oven-dried, 20-mesh (mg g"^-1*")"),
+       y = NULL) +
+  theme_bw(base_size = 11) + theme(panel.grid.minor = element_blank())
+
+fig_effects <- plot_grid(p_coef, p_share, ncol = 1, labels = c("A", "B"),
+                         rel_heights = c(1, 0.85), align = "v", axis = "lr")
+ggsave(file.path(out_dir, "effects_and_variance.png"), fig_effects,
+       width = 8, height = 7, dpi = 300, bg = "white")
+
 message("Done. Outputs in ", out_dir)

@@ -108,11 +108,11 @@ n_mod    <- fit_trait("t_mean_Nitrogen")
 
 coef_labels <- c(
   b_Intercept                  = "Intercept",
-  b_MillTreatBALL              = "Ball Mill",
-  b_MillTreatFINE              = "Fine Rotary",
-  b_DryTreatFF                 = "Flash freezing",
-  `b_MillTreatBALL:DryTreatFF` = "Ball Mill / Flash-freeze interaction",
-  `b_MillTreatFINE:DryTreatFF` = "Fine Rotary / Flash-freeze interaction",
+  b_MillTreatBALL              = "Ball mill",
+  b_MillTreatFINE              = "Fine mesh (40/60)",
+  b_DryTreatFF                 = "Freeze-dried",
+  `b_MillTreatBALL:DryTreatFF` = "Ball mill / Freeze-dried interaction",
+  `b_MillTreatFINE:DryTreatFF` = "Fine mesh / Freeze-dried interaction",
   sd_Species_Code__Intercept                          = "Species random effect s.d.",
   `sd_Species_Code:SampleID__Intercept`               = "Individual (within species) random effect s.d.",
   # measure_id = sample x drying x milling combination, so this level is the
