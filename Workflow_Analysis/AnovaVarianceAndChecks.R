@@ -21,6 +21,7 @@
 #      regenerated from the saved fit).
 #
 # Outputs: derived/anova/variance_decomposition.csv, variance_shares.png,
+#   percent_change_vs_observed_reference.csv, effects_and_variance.png,
 #   ppc_<trait>.png, <trait>_coefficients_MCMCvis.jpeg (overwritten)
 ########################################################
 
@@ -205,5 +206,33 @@ fig_effects <- plot_grid(p_coef, p_share, ncol = 1, labels = c("A", "B"),
                          rel_heights = c(1, 0.85), align = "v", axis = "lr")
 ggsave(file.path(out_dir, "effects_and_variance.png"), fig_effects,
        width = 8, height = 7, dpi = 300, bg = "white")
+
+# --- 5. percent change relative to the observed reference mean ----------------
+# Percent change = combined treatment effect / observed mean of the reference
+# cell (oven-dried, 20-mesh), the latter treated as fixed (so the interval
+# reflects uncertainty in the effects only).
+
+pct_change <- imap_dfr(models, function(m, nm) {
+  d <- as.data.frame(m)
+  y <- m$data[[1]]
+  ref <- mean(y[m$data$MillTreat == "COARSE" & m$data$DryTreat == "OD"])
+  combos <- list(
+    "Freeze-dried alone"                   = d$b_DryTreatFF,
+    "Freeze-dried + ball mill + interaction" =
+      d$b_DryTreatFF + d$b_MillTreatBALL + d[["b_MillTreatBALL:DryTreatFF"]],
+    "Freeze-dried + fine mesh + interaction" =
+      d$b_DryTreatFF + d$b_MillTreatFINE + d[["b_MillTreatFINE:DryTreatFF"]])
+  imap_dfr(combos, function(eff, lab)
+    tibble(trait = traits[[nm]], combination = lab, reference_mean_mg_g = ref,
+           effect_mean = mean(eff),
+           effect_lo = quantile(eff, 0.025, names = FALSE),
+           effect_hi = quantile(eff, 0.975, names = FALSE),
+           pct_mean = 100 * mean(eff) / ref,
+           pct_lo = 100 * quantile(eff, 0.025, names = FALSE) / ref,
+           pct_hi = 100 * quantile(eff, 0.975, names = FALSE) / ref))
+})
+print(pct_change %>% mutate(across(where(is.numeric), ~ round(.x, 2))), width = Inf)
+write.csv(pct_change, file.path(out_dir, "percent_change_vs_observed_reference.csv"),
+          row.names = FALSE)
 
 message("Done. Outputs in ", out_dir)
