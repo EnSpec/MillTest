@@ -115,7 +115,11 @@ coef_labels <- c(
   `b_MillTreatFINE:DryTreatFF` = "Fine Rotary / Flash-freeze interaction",
   sd_Species_Code__Intercept                          = "Species random effect s.d.",
   `sd_Species_Code:SampleID__Intercept`               = "Individual (within species) random effect s.d.",
-  `sd_Species_Code:SampleID:measure_id__Intercept`    = "Measurement (within individual) random effect s.d."
+  # measure_id = sample x drying x milling combination, so this level is the
+  # tree-by-treatment-combination deviation, shared by that combination's six
+  # replicate scans; scan-to-scan variation is the residual (sigma).
+  `sd_Species_Code:SampleID:measure_id__Intercept`    = "Tree x treatment combination random effect s.d.",
+  sigma                                               = "Residual (scan-to-scan) s.d."
 )
 
 report_model <- function(model, tag) {
@@ -136,7 +140,8 @@ report_model <- function(model, tag) {
   keep <- intersect(names(coef_labels), colnames(post))
   jpeg(file.path(out_dir, paste0(tag, "_coefficients_MCMCvis.jpeg")),
        width = 1600, height = 1200, res = 200)
-  MCMCplot(post[, keep], labels = unname(coef_labels[keep]))
+  MCMCplot(post[, keep], labels = unname(coef_labels[keep]),
+           xlab = expression("Coefficient or s.d. (mg g"^-1*")"))
   dev.off()
 }
 

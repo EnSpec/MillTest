@@ -147,6 +147,11 @@ step's inputs come from an earlier step, that's noted explicitly.
     treatment coefficients. Reads step 1's trait predictions and step 8's
     join output. Writes model objects, posterior summaries, and trace/
     coefficient plots to `derived/anova/`.
+    `Workflow_Analysis/AnovaVarianceAndChecks.R` post-processes those saved
+    fits without refitting: a variance decomposition (treatment, species,
+    tree, tree × treatment combination, residual; posterior shares and the
+    species-to-treatment SD ratio), posterior predictive check figures, and
+    the coefficient plot regenerated with corrected random-effect labels.
 11. `Workflow_Calculations/code/BootstrapCode.R` — the manuscript's
     difference-spectrum method: for each sample × treatment-pair, computes
     the spectral difference for all 36 replicate-pair combinations
