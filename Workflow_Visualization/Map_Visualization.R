@@ -163,6 +163,8 @@ map_main <- ggplot() +
                     drop = FALSE,
                     guide = guide_legend(override.aes = list(shape = 21))) +
   scale_shape_manual(values = c(Broadleaf = 21, Conifer = 24),
+                     labels = c(Broadleaf = "Broadleaf",
+                                Conifer = "Needle/scale-leaf"),
                      name = "Growth form") +
   annotation_scale(location = "bl", width_hint = 0.25, text_cex = 0.8) +
   annotation_north_arrow(location = "tr", which_north = "true",
