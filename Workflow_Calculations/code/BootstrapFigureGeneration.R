@@ -79,7 +79,7 @@ workingplot = ggplot() +
   theme_bw(base_size = 15) +
   facet_grid(sublabel + Comparison ~ Type, scale = "free_y") +
   scale_color_manual(values = c("#0000a2", "#50ad9f", "#e9c716", "#bc272d")) +
-  ylab("Reflectance (%) Difference") +
+  ylab("Reflectance difference (percentage points)") +
   xlab("Wavelength (nm)") +
   theme(legend.position = "none", strip.text = element_text(size = 15), axis.title = element_text(size = 20)) 
 workingplot
