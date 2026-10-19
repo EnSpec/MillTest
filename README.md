@@ -131,6 +131,15 @@ step's inputs come from an earlier step, that's noted explicitly.
 9. `Workflow_Analysis/ChemistryAnalysis.R` — observed (Brookside wet
    chemistry) vs. predicted nitrogen/calcium by treatment: per-treatment
    linear fits, RMSE/NRMSE, and a variance-partitioning analysis.
+   `Workflow_Analysis/TreatmentAgreement.R` then re-examines those
+   predictions against the common oven-dried 20-mesh reference: MSE split
+   into bias / proportionality / unsystematic error, Lin's concordance
+   correlation coefficient, Bland–Altman limits of agreement, and a
+   break-even sensitivity analysis of the reference offset using the paired
+   freeze-dried / oven-dried isotope measurements (step 4's
+   `IsotopeExtract.R`). `Workflow_Analysis/TreatmentAgreementSupplement.R`
+   formats its outputs as the supplement Word tables and PNG figures. Both
+   write to `derived/treatment_agreement/`; they need steps 1 and 4.
 10. `Workflow_Analysis/Predicted_Trait_Analysis.R` — Bayesian ANOVA (`brms`)
     of predicted N and Ca as a function of milling × drying, with nested
     species / individual / measurement-replicate random intercepts; 4 chains
@@ -138,6 +147,11 @@ step's inputs come from an earlier step, that's noted explicitly.
     treatment coefficients. Reads step 1's trait predictions and step 8's
     join output. Writes model objects, posterior summaries, and trace/
     coefficient plots to `derived/anova/`.
+    `Workflow_Analysis/AnovaVarianceAndChecks.R` post-processes those saved
+    fits without refitting: a variance decomposition (treatment, species,
+    tree, tree × treatment combination, residual; posterior shares and the
+    species-to-treatment SD ratio), posterior predictive check figures, and
+    the coefficient plot regenerated with corrected random-effect labels.
 11. `Workflow_Calculations/code/BootstrapCode.R` — the manuscript's
     difference-spectrum method: for each sample × treatment-pair, computes
     the spectral difference for all 36 replicate-pair combinations
@@ -148,7 +162,8 @@ step's inputs come from an earlier step, that's noted explicitly.
     step 11's output.
 13. `Workflow_Calculations/code/Table1_SpectralDifferenceRegions.R` and
     `Workflow_Calculations/code/SpectralDifferenceCurves.R` — regenerate the
-    manuscript's spectral-difference-by-region table and full-resolution
+    manuscript's spectral-difference-by-region table (cells are the mean ±
+    the half-width of the 95% CI across trees) and full-resolution
     difference curves, both directly from step 11's output.
 14. `Workflow_Calculations/code/SpectralDifferenceNormalized.R` and
     `Workflow_Calculations/code/GrindVariancePartition.R` — supplement

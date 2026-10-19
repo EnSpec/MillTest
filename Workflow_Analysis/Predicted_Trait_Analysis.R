@@ -108,14 +108,18 @@ n_mod    <- fit_trait("t_mean_Nitrogen")
 
 coef_labels <- c(
   b_Intercept                  = "Intercept",
-  b_MillTreatBALL              = "Ball Mill",
-  b_MillTreatFINE              = "Fine Rotary",
-  b_DryTreatFF                 = "Flash freezing",
-  `b_MillTreatBALL:DryTreatFF` = "Ball Mill / Flash-freeze interaction",
-  `b_MillTreatFINE:DryTreatFF` = "Fine Rotary / Flash-freeze interaction",
+  b_MillTreatBALL              = "Ball mill",
+  b_MillTreatFINE              = "Fine mesh (40/60)",
+  b_DryTreatFF                 = "Freeze-dried",
+  `b_MillTreatBALL:DryTreatFF` = "Ball mill / Freeze-dried interaction",
+  `b_MillTreatFINE:DryTreatFF` = "Fine mesh / Freeze-dried interaction",
   sd_Species_Code__Intercept                          = "Species random effect s.d.",
   `sd_Species_Code:SampleID__Intercept`               = "Individual (within species) random effect s.d.",
-  `sd_Species_Code:SampleID:measure_id__Intercept`    = "Measurement (within individual) random effect s.d."
+  # measure_id = sample x drying x milling combination, so this level is the
+  # tree-by-treatment-combination deviation, shared by that combination's six
+  # replicate scans; scan-to-scan variation is the residual (sigma).
+  `sd_Species_Code:SampleID:measure_id__Intercept`    = "Tree x treatment combination random effect s.d.",
+  sigma                                               = "Residual (scan-to-scan) s.d."
 )
 
 report_model <- function(model, tag) {
@@ -136,7 +140,8 @@ report_model <- function(model, tag) {
   keep <- intersect(names(coef_labels), colnames(post))
   jpeg(file.path(out_dir, paste0(tag, "_coefficients_MCMCvis.jpeg")),
        width = 1600, height = 1200, res = 200)
-  MCMCplot(post[, keep], labels = unname(coef_labels[keep]))
+  MCMCplot(post[, keep], labels = unname(coef_labels[keep]),
+           xlab = expression("Coefficient or s.d. (mg g"^-1*")"))
   dev.off()
 }
 

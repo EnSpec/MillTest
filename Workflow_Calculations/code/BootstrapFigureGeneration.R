@@ -27,17 +27,20 @@ BootDataFull <- lapply(file_list, read.csv) %>%
 
 sampleinfo <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
   rename(sample_name = Sample_ID) %>%
-  select(sample_name, Type)
+  select(sample_name, Species_Code, Type)
 
+# Restrict to the 61-tree / 11-species study design described in the methods:
+# drops the forbs and graminoid and the single honey locust (GLTR), matching
+# Table1_SpectralDifferenceRegions.R and Predicted_Trait_Analysis.R.
 BootDataSampleMean <- BootDataFull %>% 
   group_by(sample_name, treatment1, treatment2) %>% 
   summarize(across(everything(), mean)) %>% 
   mutate(stat = "Sample")
 
 BootDataSampleMean <- full_join(BootDataSampleMean, sampleinfo, join_by(sample_name)) %>% 
-  select(sample_name, treatment1, treatment2, Type, everything()) %>% 
-  filter(Type != "Forb") %>% 
-  filter(Type != "Graminoid") %>% 
+  select(sample_name, treatment1, treatment2, Type, everything()) %>%
+  filter(Type %in% c("Broadleaf", "Conifer"), Species_Code != "GLTR") %>%
+  select(-Species_Code) %>%
   mutate(Type = recode(Type, "Conifer" = "Needle-Leaf")) %>% 
   drop_na()
 
@@ -79,100 +82,13 @@ workingplot = ggplot() +
   theme_bw(base_size = 15) +
   facet_grid(sublabel + Comparison ~ Type, scale = "free_y") +
   scale_color_manual(values = c("#0000a2", "#50ad9f", "#e9c716", "#bc272d")) +
-  ylab("Reflectance (%) Difference") +
+  ylab("Reflectance difference (percentage points)") +
   xlab("Wavelength (nm)") +
   theme(legend.position = "none", strip.text = element_text(size = 15), axis.title = element_text(size = 20)) 
 workingplot
 
 ggsave(file.path(out_dir, "BootstrapBiasChart.png"), workingplot, dpi = 300, scale = 4, width = 4, height = 3)
 
-# Calculations for difference summaries
-
-bias <- BootDataSampleMean
-
-# Filter necessary data
-bias <- bias %>%
-  select(sample_name, Type, everything()) %>% 
-  filter(Type == "Conifer" | Type == "Broadleaf") %>% 
-  select(-stat)
-
-# Pivot data frame to calculate stats
-columnnames <- c("sample_name", "Type", "treatment1", "treatment2")
-biaspivot = pivot_longer(bias, cols = !all_of(columnnames))
-biaspivot = biaspivot %>% 
-  rename(Wavelength = name) %>% 
-  rename(PercentBias = value) %>% 
-  mutate(Wavelength = strtoi(substring(Wavelength, 2)))
-
-# All Data Averages
-
-averagealldata = biaspivot %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averagevisibledata = subset(biaspivot, Wavelength >= 400 & Wavelength <= 700) %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageNIRdata = subset(biaspivot, Wavelength >= 701 & Wavelength <= 1500) %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageSWIR1data = subset(biaspivot, Wavelength >= 1501 & Wavelength <= 2000) %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageSWIR2data = subset(biaspivot, Wavelength >= 2001 & Wavelength <= 2500) %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-# Broadleaf averages
-
-averageallBroadleaf = subset(biaspivot, Type == "Broadleaf") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averagevisiblebroadleaf = subset(biaspivot, Wavelength >= 400 & Wavelength <= 700 & Type == "Broadleaf") %>%
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageNIRbroadleaf = subset(biaspivot, Wavelength >= 701 & Wavelength <= 1500 & Type == "Broadleaf") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageSWIR1broadleaf = subset(biaspivot, Wavelength >= 1501 & Wavelength <= 2000 & Type == "Broadleaf") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageSWIR2broadleaf = subset(biaspivot, Wavelength >= 2001 & Wavelength <= 2500 & Type == "Broadleaf") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-# Conifer averages
-
-averageallConifer = subset(biaspivot, Type == "Conifer") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averagevisibleConifer = subset(biaspivot, Wavelength >= 400 & Wavelength <= 700 & Type == "Conifer") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageNIRConifer = subset(biaspivot, Wavelength >= 701 & Wavelength <= 1500 & Type == "Conifer") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageSWIR1Conifer = subset(biaspivot, Wavelength >= 1501 & Wavelength <= 2000 & Type == "Conifer") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-averageSWIR2Conifer = subset(biaspivot, Wavelength >= 2001 & Wavelength <= 2500 & Type == "Conifer") %>% 
-  group_by(treatment1, treatment2) %>% 
-  summarize(Reflectance = mean(PercentBias))
-
-
-
-
-
-
-
+# Region-by-growth-form summaries of these differences (Table 1) are computed in
+# Table1_SpectralDifferenceRegions.R, and per-wavelength peaks in
+# SpectralDifferenceCurves.R.

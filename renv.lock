@@ -3798,6 +3798,57 @@
       "Maintainer": "Constantin Ahlmann-Eltze <artjom31415@googlemail.com>",
       "Repository": "CRAN"
     },
+    "ggspatial": {
+      "Package": "ggspatial",
+      "Version": "1.1.11",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Spatial Data Framework for ggplot2",
+      "Authors@R": "c( person(\"Dewey\", \"Dunnington\", email = \"dewey@fishandwhistle.net\",  role = c(\"aut\", \"cre\"),  comment = c(ORCID = \"0000-0002-9415-4582\") ), person(\"Brent\", \"Thorne\", role = \"ctb\", comment = c(ORCID = \"0000-0002-1099-3857\")), person(\"Diego\", \"Hernangómez\", role = \"ctb\", comment = c(ORCID = \"0000-0001-8457-4658\")) )",
+      "Maintainer": "Dewey Dunnington <dewey@fishandwhistle.net>",
+      "Description": "Spatial data plus the power of the ggplot2 framework means easier mapping when input  data are already in the form of spatial objects.",
+      "License": "GPL-3",
+      "Depends": [
+        "R (>= 2.10)"
+      ],
+      "Imports": [
+        "sf",
+        "ggplot2 (>= 3.0.0)",
+        "rosm (>= 0.3.2)",
+        "abind",
+        "methods",
+        "tibble",
+        "scales",
+        "tidyr",
+        "rlang",
+        "grid",
+        "glue"
+      ],
+      "Suggests": [
+        "prettymapr",
+        "knitr",
+        "rmarkdown",
+        "sp",
+        "raster",
+        "terra",
+        "testthat (>= 3.0.0)",
+        "dplyr",
+        "withr",
+        "ggrepel",
+        "stars",
+        "covr",
+        "vdiffr",
+        "lwgeom"
+      ],
+      "URL": "https://paleolimbot.github.io/ggspatial/, https://github.com/paleolimbot/ggspatial",
+      "BugReports": "https://github.com/paleolimbot/ggspatial/issues",
+      "Encoding": "UTF-8",
+      "Config/testthat/edition": "3",
+      "Config/roxygen2/version": "8.0.0",
+      "NeedsCompilation": "no",
+      "Author": "Dewey Dunnington [aut, cre] (ORCID: <https://orcid.org/0000-0002-9415-4582>), Brent Thorne [ctb] (ORCID: <https://orcid.org/0000-0002-1099-3857>), Diego Hernangómez [ctb] (ORCID: <https://orcid.org/0000-0001-8457-4658>)",
+      "Repository": "CRAN"
+    },
     "globals": {
       "Package": "globals",
       "Version": "0.19.0",
@@ -4455,6 +4506,25 @@
       "Maintainer": "Folashade Daniel <fdaniel@microsoft.com>",
       "Repository": "CRAN"
     },
+    "jpeg": {
+      "Package": "jpeg",
+      "Version": "0.1-11",
+      "Source": "Repository",
+      "Title": "Read and write JPEG images",
+      "Author": "Simon Urbanek [aut, cre, cph] (https://urbanek.org, <https://orcid.org/0000-0003-2297-1732>)",
+      "Authors@R": "person(\"Simon\", \"Urbanek\", role=c(\"aut\",\"cre\",\"cph\"), email=\"Simon.Urbanek@r-project.org\", comment=c(\"https://urbanek.org\", ORCID=\"0000-0003-2297-1732\"))",
+      "Maintainer": "Simon Urbanek <Simon.Urbanek@r-project.org>",
+      "Depends": [
+        "R (>= 2.9.0)"
+      ],
+      "Description": "This package provides an easy and simple way to read, write and display bitmap images stored in the JPEG format. It can read and write both files and in-memory raw vectors.",
+      "License": "GPL-2 | GPL-3",
+      "SystemRequirements": "libjpeg",
+      "URL": "https://www.rforge.net/jpeg/",
+      "BugReports": "https://github.com/s-u/jpeg/issues",
+      "NeedsCompilation": "yes",
+      "Repository": "CRAN"
+    },
     "jquerylib": {
       "Package": "jquerylib",
       "Version": "0.1.4",
@@ -5004,6 +5074,36 @@
       "Author": "Stefan Milton Bache [aut, cph] (Original author and creator of magrittr), Hadley Wickham [aut], Lionel Henry [cre], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "CRAN"
+    },
+    "maps": {
+      "Package": "maps",
+      "Version": "3.4.3",
+      "Source": "Repository",
+      "Title": "Draw Geographical Maps",
+      "Date": "2025-05-15",
+      "Description": "Display of maps.  Projection code and larger maps are in separate packages ('mapproj' and 'mapdata').",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Imports": [
+        "graphics",
+        "utils"
+      ],
+      "LazyData": "yes",
+      "Suggests": [
+        "mapproj (>= 1.2-0)",
+        "mapdata (>= 2.3.0)",
+        "sf",
+        "rnaturalearth"
+      ],
+      "License": "GPL-2",
+      "URL": "https://github.com/adeckmyn/maps",
+      "BugReports": "https://github.com/adeckmyn/maps/issues",
+      "Authors@R": "c(person(given  = c(\"Richard\", \"A.\"), family = \"Becker\", role   = \"aut\", comment= \"Original S code\"), person(given  = c(\"Allan\", \"R.\"), family = \"Wilks\", role   = \"aut\", comment= \"Original S code\"), person(given  = \"Ray\", family = \"Brownrigg\", role   = c(\"trl\", \"aut\"), comment= \"R version\"), person(given  = c(\"Thomas\", \"P.\"), family = \"Minka\", role   = \"aut\", comment= \"Enhancements\"), person(given  = \"Alex\", family = \"Deckmyn\", role   = c(\"aut\", \"cre\"), comment= c(ORCID=\"0009-0002-2010-8310\"), email  = \"alex.deckmyn@meteo.be\"))",
+      "NeedsCompilation": "yes",
+      "Repository": "CRAN",
+      "Author": "Richard A. Becker [aut] (Original S code), Allan R. Wilks [aut] (Original S code), Ray Brownrigg [trl, aut] (R version), Thomas P. Minka [aut] (Enhancements), Alex Deckmyn [aut, cre] (ORCID: <https://orcid.org/0009-0002-2010-8310>)",
+      "Maintainer": "Alex Deckmyn <alex.deckmyn@meteo.be>"
     },
     "matrixStats": {
       "Package": "matrixStats",
@@ -5819,6 +5919,25 @@
       "NeedsCompilation": "yes",
       "Author": "Hadley Wickham [aut, cre]",
       "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Repository": "CRAN"
+    },
+    "png": {
+      "Package": "png",
+      "Version": "0.1-9",
+      "Source": "Repository",
+      "Title": "Read and write PNG images",
+      "Author": "Simon Urbanek [aut, cre, cph] (https://urbanek.nz, ORCID: <https://orcid.org/0000-0003-2297-1732>)",
+      "Authors@R": "person(\"Simon\", \"Urbanek\", role=c(\"aut\",\"cre\",\"cph\"), email=\"Simon.Urbanek@r-project.org\", comment=c(\"https://urbanek.nz\", ORCID=\"0000-0003-2297-1732\"))",
+      "Maintainer": "Simon Urbanek <Simon.Urbanek@r-project.org>",
+      "Depends": [
+        "R (>= 2.9.0)"
+      ],
+      "Description": "This package provides an easy and simple way to read, write and display bitmap images stored in the PNG format. It can read and write both files and in-memory raw vectors.",
+      "License": "GPL-2 | GPL-3",
+      "SystemRequirements": "libpng",
+      "URL": "https://www.rforge.net/png/",
+      "BugReports": "https://github.com/s-u/png/issues/",
+      "NeedsCompilation": "yes",
       "Repository": "CRAN"
     },
     "polynom": {
@@ -6723,6 +6842,48 @@
       "NeedsCompilation": "no",
       "Author": "JJ Allaire [aut], Yihui Xie [aut, cre] (ORCID: <https://orcid.org/0000-0003-0645-5666>), Christophe Dervieux [aut] (ORCID: <https://orcid.org/0000-0003-4474-2498>), Jonathan McPherson [aut], Javier Luraschi [aut], Kevin Ushey [aut], Aron Atkins [aut], Hadley Wickham [aut], Joe Cheng [aut], Winston Chang [aut], Richard Iannone [aut] (ORCID: <https://orcid.org/0000-0003-3925-190X>), Andrew Dunning [ctb] (ORCID: <https://orcid.org/0000-0003-0464-5036>), Atsushi Yasumoto [ctb, cph] (ORCID: <https://orcid.org/0000-0002-8335-495X>, cph: Number sections Lua filter), Barret Schloerke [ctb], Carson Sievert [ctb] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Devon Ryan [ctb] (ORCID: <https://orcid.org/0000-0002-8549-0971>), Frederik Aust [ctb] (ORCID: <https://orcid.org/0000-0003-4900-788X>), Jeff Allen [ctb], JooYoung Seo [ctb] (ORCID: <https://orcid.org/0000-0002-4064-6012>), Malcolm Barrett [ctb], Rob Hyndman [ctb], Romain Lesur [ctb], Roy Storey [ctb], Ruben Arslan [ctb], Sergio Oller [ctb], Posit Software, PBC [cph, fnd], jQuery UI contributors [ctb, cph] (jQuery UI library; authors listed in inst/rmd/h/jqueryui/AUTHORS.txt), Mark Otto [ctb] (Bootstrap library), Jacob Thornton [ctb] (Bootstrap library), Bootstrap contributors [ctb] (Bootstrap library), Twitter, Inc [cph] (Bootstrap library), Alexander Farkas [ctb, cph] (html5shiv library), Scott Jehl [ctb, cph] (Respond.js library), Ivan Sagalaev [ctb, cph] (highlight.js library), Greg Franko [ctb, cph] (tocify library), John MacFarlane [ctb, cph] (Pandoc templates), Google, Inc. [ctb, cph] (ioslides library), Dave Raggett [ctb] (slidy library), W3C [cph] (slidy library), Dave Gandy [ctb, cph] (Font-Awesome), Ben Sperry [ctb] (Ionicons), Drifty [cph] (Ionicons), Aidan Lister [ctb, cph] (jQuery StickyTabs), Benct Philip Jonsson [ctb, cph] (pagebreak Lua filter), Albert Krewinkel [ctb, cph] (pagebreak Lua filter)",
       "Maintainer": "Yihui Xie <xie@yihui.name>",
+      "Repository": "CRAN"
+    },
+    "rosm": {
+      "Package": "rosm",
+      "Version": "0.3.2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Plot Raster Map Tiles from Open Street Map and Other Sources",
+      "Encoding": "UTF-8",
+      "Authors@R": "c(person(\"Dewey\", \"Dunnington\", role = c(\"aut\", \"cre\"), email = \"dewey@fishandwhistle.net\", comment = c(ORCID = \"0000-0002-9415-4582\")), person(\"Timothée\", \"Giraud\", role = \"ctb\"))",
+      "Maintainer": "Dewey Dunnington <dewey@fishandwhistle.net>",
+      "Description": "Download and plot Open Street Map <https://www.openstreetmap.org/>, Bing Maps <https://www.bing.com/maps> and other tiled map sources. Use to create  basemaps quickly and add hillshade to vector-based maps.",
+      "License": "GPL-2",
+      "Imports": [
+        "curl",
+        "jpeg",
+        "png",
+        "wk",
+        "glue",
+        "progress",
+        "rlang"
+      ],
+      "Suggests": [
+        "sp",
+        "plyr",
+        "raster",
+        "testthat (>= 3.0.0)",
+        "withr",
+        "sf",
+        "terra",
+        "abind",
+        "methods",
+        "jsonlite",
+        "tiff",
+        "vdiffr"
+      ],
+      "URL": "https://github.com/paleolimbot/rosm",
+      "BugReports": "https://github.com/paleolimbot/rosm/issues",
+      "Config/testthat/edition": "3",
+      "Config/roxygen2/version": "8.0.0",
+      "NeedsCompilation": "no",
+      "Author": "Dewey Dunnington [aut, cre] (ORCID: <https://orcid.org/0000-0002-9415-4582>), Timothée Giraud [ctb]",
       "Repository": "CRAN"
     },
     "rprojroot": {
