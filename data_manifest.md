@@ -33,7 +33,7 @@ Assembled by `Workflow_Calculations/code/BuildDepositPackageA.R`, which rebuilds
 | `chemistry/` (isotope, TPC, ANKOM x4, fat assay, Brookside, leaf area; all cleaned Mill Test rows only) | <0.2M | **Replaces the raw `ChemResults/Brookside.csv`, isotope report and fat-assay workbook** that an earlier version of this table listed: those are lab logs shared with other projects (Brookside.csv holds ABOVE, BIOSCAPE, LNG24 and other rows) and are in neither package. |
 | `taxonomy/`, `README.txt`, `MANIFEST_md5.txt` | small | `README.txt` is generated from `derived/README_package_A_ecosis.txt` (server). |
 
-**Package B: Zenodo data record (built 2026-10-19: 2851 files, 600.9 MB, `deposit/package_B/` on the server)**
+**Package B: Zenodo data record (built 2026-10-19: 2854 files, 1158 MB, `deposit/package_B/` on the server)**
 
 Assembled by `Workflow_Calculations/code/BuildDepositPackageB.R` (rebuilds from scratch, checks file counts and that no non-MILL24 files, `.rds` fits or pilot sheets ship, writes `MANIFEST_md5.txt`). README source: `derived/README_package_B_zenodo.txt` (server).
 
@@ -43,7 +43,7 @@ Assembled by `Workflow_Calculations/code/BuildDepositPackageB.R` (rebuilds from 
 | `LeafScans/` (101 `.jpg`, incl. `PlantID/`) | 70M | JPEGs only (no `Thumbs.db`). |
 | `spectral_intermediates/` | 117M | VN and 5 nm resampled spectra. The raw (jump-corrected) spectra are in Package A, so `SpectralPredictR_raw_spectra.csv` is not repeated. |
 | `BootstrappedData/` (264 CSVs) | 291M | Exhaustive 36-pair difference output (name is stale; see the to-do rename). |
-| `analysis_outputs/` | 29M | `spectral_difference`, `spectral_difference_vn`, `grind_variance`, `treatment_agreement`, `bootstrap`, `maps` (no tile cache), `anova` (**no `*_model.rds`**, ~280M each; summaries, diagnostics and figures ship). |
+| `analysis_outputs/` | 586M | `spectral_difference`, `spectral_difference_vn`, `grind_variance`, `treatment_agreement`, `bootstrap`, `maps` (no tile cache), `anova` (summaries, diagnostics, figures **and the two brms fits `*_model.rds`**, ~280M each). |
 | `qc_review/qc_review_plots.pdf` | 7.5M | |
 | `leaf_area_code/leaf_area_approvedbyTing.ipynb` | 17K | The leaf-area notebook used for the scans (Ting Zheng's code); copied into the repo at `Workflow_Calculations/code/leaf_area/` 2026-10-19. |
 | `raw_workbooks/` | 1.7M | ANKOM x2, TPC x4 (two from `chemistry_sample_handling/raw_chem_inputs`), `Mill24_LMA.xlsx`, and the inventory workbook as one CSV per sheet **without the `2022_MillTest` sheet** (an equipment pilot on WisAsp/SHIFT samples). All scanned cell by cell for other projects' sample IDs. |
@@ -185,8 +185,10 @@ it's part of this deposit's provenance.
 
 **Flag-only, with three exceptions** (Henry, 2026-09-20 / 2026-09-23 / 2026-09-30). Every
 check writes a flag table; flags are broadcast to the per-spectrum grain and
-carried into the deposit as two columns (`quality_flag`,
-`n_checks_flagged`). Three checks remove rather than flag, by two *different*
+carried into the deposit as four columns, split by kind (2026-10-19):
+`spectral_flag` / `n_spectral_flags` (scan-level `spectral_*` checks; 29 spectra, 1.2%) and
+`trait_flag` / `n_trait_flags` (tree-level trait checks broadcast to every spectrum of the tree;
+1296 spectra, 54.5%, because 60 of 66 trees carry at least one of ~40 trait checks). Three checks remove rather than flag, by two *different*
 mechanisms — the distinction matters:
 
 - `spectral_band_threshold` (R350 >= 0.9) and `spectral_nir_plateau_floor`
@@ -227,7 +229,7 @@ flags, which was ~96 real sample × trait problems wearing a big number.
 
 | File | Size | Produced by |
 |---|---|---|
-| `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `quality_flag` / `n_checks_flagged`. **Decided 2026-09-23 (Henry): ship this ALONGSIDE the bare sidecar, not instead of it** — and explain the distinction in the deposit README, so a user knows the flagged version is the same data plus advisory columns, not a different or filtered dataset. |
+| `derived/qc/spectral_metadata_sidecar_with_qc_flags.csv` | ~1.8M | `Workflow_Calculations/code/TraitSpectralQC.R` — the sidecar plus `spectral_flag` / `n_spectral_flags` / `trait_flag` / `n_trait_flags`. **Decided 2026-09-23 (Henry): ship this ALONGSIDE the bare sidecar, not instead of it** — and explain the distinction in the deposit README, so a user knows the flagged version is the same data plus advisory columns, not a different or filtered dataset. |
 | `derived/qc/qc_check_summary.csv` | 1.5K | same — one row per check, with how many rows it flagged. The short QC report. |
 | `derived/qc/qc_quality_flag_by_spectrum.csv` | ~180K | same — per-spectrum flag reasons, joinable to any other spectral file by `spectra`. |
 | `derived/qc/*_flags.csv` | ~550K total | same — one table per check, carrying the offending value, the group median/bound it was compared against, and the deviation. 39 tables in the current run. |

@@ -19,8 +19,6 @@
 #     ship, in Package A).
 #   - The "2022_MillTest" sheet of the inventory workbook (an old equipment
 #     pilot on other projects' samples). The other sheets are exported to CSV.
-#   - The saved brms fits (derived/anova/*_model.rds, ~280 MB each); the
-#     summaries, diagnostics and figures ship. Re-fitting takes hours.
 #   - LMA_Processing_Training/ and Pictures/ (training images and apparatus
 #     photos, not data for any result), derived/data_join/ and
 #     derived/trait_comparisons/ (large, regenerable by the repo code).
@@ -81,7 +79,8 @@ for (sub in c("spectral_difference", "spectral_difference_vn", "grind_variance",
   invisible(copy_tree(d("derived", sub), file.path("analysis_outputs", sub)))
 }
 invisible(copy_tree(d("derived", "maps"), file.path("analysis_outputs", "maps"), exclude = "tile_cache"))
-invisible(copy_tree(d("derived", "anova"), file.path("analysis_outputs", "anova"), exclude = "\\.rds$"))
+# Includes the two saved brms fits (*_model.rds, ~280 MB each; re-fitting takes hours).
+invisible(copy_tree(d("derived", "anova"), file.path("analysis_outputs", "anova")))
 put(d("derived", "qc_review", "qc_review_plots.pdf"), "qc_review")
 
 # --- leaf-area code (the notebook the interns used for the leaf scans) ---------------------
@@ -118,7 +117,7 @@ stopifnot(
   "expected 2418 .asd files" = n$asd == 2418,
   "expected 101 leaf scan jpgs" = n$leaf == 101,
   "no 2022 pilot sheet may ship" = !any(grepl("2022", list.files(inv_dir))),
-  "no brms .rds may ship" = !any(grepl("\\.rds$", list.files(pkg, recursive = TRUE)))
+  "expected the two brms fits (calcium, nitrogen)" = sum(grepl("_model\\.rds$", list.files(pkg, recursive = TRUE))) == 2
 )
 asd <- list.files(file.path(pkg, "DrySpec"), recursive = TRUE, pattern = "\\.asd$")
 stopifnot("an .asd file is not a MILL24 sample" = all(grepl("^MILL24_", basename(asd))))
