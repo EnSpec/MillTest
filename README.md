@@ -171,7 +171,11 @@ step's inputs come from an earlier step, that's noted explicitly.
     reduction in mean particle size plus a growth-form term; needs step 3
     (particle size) and step 11. Writes to `derived/spectral_difference/`.
 14. `Workflow_Visualization/Map_Visualization.R` — sample collection-location
-    map. Reads `sample_info.csv` only; independent of every other step.
+    map (supplement figure) on a public-domain USGS National Map basemap, with
+    scale bar, north arrow, species colours and a Wisconsin inset. Reads
+    `sample_info.csv` only; independent of every other step. Basemap tiles are
+    downloaded once into `derived/maps/tile_cache/` and re-used; with no
+    network and no cache the map is drawn without a basemap.
 
 Everything under `*/archive/` is superseded and not part of this run order —
 see `REPOSITORY_NOTES.md` for what's there and why.

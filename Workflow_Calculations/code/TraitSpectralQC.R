@@ -78,6 +78,7 @@ sidecar <- sidecar %>%
   mutate(
     species_dry_treatment     = paste(species_code, dry_treatment, sep = "_"),
     growth_form_mill_treatment = paste(growth_form, mill_treatment, sep = "_"),
+    growth_form_dry_treatment  = paste(growth_form, dry_treatment, sep = "_"),
     measure_id = paste(sample_name, mill_treatment, dry_treatment, sep = "_")  # one spectral replicate set
   )
 
@@ -578,7 +579,7 @@ message(sprintf("Spectra removed (whole rows): %d", length(removal_spectra)))
 # (not replacing) the original spectral_metadata_sidecar.csv -- per the QC
 # standard's "flag columns carried into the deposit" output contract.
 sidecar_with_flags <- sidecar %>%
-  select(-species_dry_treatment, -growth_form_mill_treatment, -measure_id) %>%
+  select(-species_dry_treatment, -growth_form_mill_treatment, -growth_form_dry_treatment, -measure_id) %>%
   left_join(quality_flag_by_spectrum, by = "spectra") %>%
   filter(!spectra %in% removal_spectra)
 
