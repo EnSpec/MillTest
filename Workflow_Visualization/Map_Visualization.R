@@ -22,6 +22,9 @@
 # 2026-10-18: publication version. USGS National Map basemap (public domain),
 # ggspatial scale bar and north arrow, points coloured by species (shape by
 # growth form), Wisconsin inset.
+# 2026-10-19: colour now encodes growth form only (two Okabe-Ito colours) and
+# shape encodes species within growth form, because the 11-colour species
+# palette had several near-identical blues that could not be told apart.
 #
 # Basemap and offline behaviour
 # Tiles come from the USGS National Map "USGS Topo" service and are cached in
@@ -55,22 +58,31 @@ sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %
 # coords = c(lon, lat); Y_Coord is the longitude column despite its name.
 mill_sf <- st_as_sf(sample_info, coords = c("Y_Coord", "X_Coord"), crs = 4326)
 
-# --- species styling -------------------------------------------------------
-# Scientific colour map "batlow" (colour-vision-deficiency safe), the same
-# species colours used in the chemistry-sample-handling figures; black
-# outlines keep the pale fills legible on the topographic basemap.
-species_levels <- c(
+# --- styling: colour = growth form, shape = species -------------------------
+# Eleven species cannot be told apart by colour alone under colour-vision
+# deficiency, so colour carries only growth form (two Okabe-Ito colours) and
+# shape identifies the species within its growth form. Shapes are reused across
+# growth forms; the shape + colour pair is unique. Darker outlines of the same
+# hue keep the points legible on the topographic basemap.
+broadleaf_species <- c(
   "Hackberry (Celtis occidentalis)", "Black Locust (Robinia pseudoacacia)",
   "Red Oak (Quercus rubra)", "Sugar Maple (Acer saccharum)",
-  "Pagoda Dogwood (Cornus alternifolia)", "Buckthorn (Rhamnus cathartica)",
+  "Pagoda Dogwood (Cornus alternifolia)", "Buckthorn (Rhamnus cathartica)")
+conifer_species <- c(
   "Red Pine (Pinus resinosa)", "White Pine (Pinus strobus)",
   "Red Cedar (Juniperus virginiana)", "Norway Spruce (Picea abies)",
   "White Cedar (Thuja occidentalis)")
-species_fill <- setNames(
-  c("#011959", "#F89B3A", "#435BB2", "#E3E3B8", "#7A95D1", "#E85E0E",
-    "#C0CBD1", "#5C78C4", "#F5C97A", "#2C3E8F", "#9BB1D7"),
-  species_levels)
+species_levels <- c(broadleaf_species, conifer_species)
 stopifnot(all(unique(mill_sf$Species) %in% species_levels))
+
+# circle, square, diamond, triangle up, triangle down are fillable (21-25);
+# the sixth broadleaf species gets a cross (4), drawn in the outline colour
+species_shape <- setNames(c(21, 22, 23, 24, 25, 4, 21, 22, 23, 24, 25),
+                          species_levels)
+form_fill    <- c(Broadleaf = "#E69F00", Conifer = "#009E73")
+form_outline <- c(Broadleaf = "#7A5200", Conifer = "#00553D")
+form_labels  <- c(Broadleaf = "Broadleaf", Conifer = "Needle/scale-leaf")
+species_form <- ifelse(species_levels %in% broadleaf_species, "Broadleaf", "Conifer")
 
 # legend labels: common name, scientific name in italics
 legend_label <- function(x) {
@@ -156,16 +168,20 @@ map_main <- ggplot() +
     annotation_raster(basemap$img, xmin = basemap$xmin, xmax = basemap$xmax,
                       ymin = basemap$ymin, ymax = basemap$ymax,
                       interpolate = TRUE)} +
-  geom_sf(data = mill_3857, aes(fill = Species, shape = Type),
-          size = 2.8, colour = "black", stroke = 0.4, alpha = 0.95) +
-  scale_fill_manual(values = species_fill, name = "Species",
-                    labels = parse(text = legend_label(species_levels)),
-                    drop = FALSE,
-                    guide = guide_legend(override.aes = list(shape = 21))) +
-  scale_shape_manual(values = c(Broadleaf = 21, Conifer = 24),
-                     labels = c(Broadleaf = "Broadleaf",
-                                Conifer = "Needle/scale-leaf"),
-                     name = "Growth form") +
+  geom_sf(data = mill_3857, aes(shape = Species, fill = Type, colour = Type),
+          size = 3, stroke = 0.7, alpha = 0.95) +
+  scale_shape_manual(values = species_shape, name = "Species",
+                     labels = parse(text = legend_label(species_levels)),
+                     drop = FALSE,
+                     guide = guide_legend(order = 2, override.aes = list(
+                       fill = unname(form_fill[species_form]),
+                       colour = unname(form_outline[species_form]),
+                       size = 3, stroke = 0.7))) +
+  scale_fill_manual(values = form_fill, labels = form_labels,
+                    name = "Growth form",
+                    guide = guide_legend(order = 1, override.aes = list(
+                      shape = 21, colour = unname(form_outline), size = 3.5))) +
+  scale_colour_manual(values = form_outline, guide = "none") +
   annotation_scale(location = "bl", width_hint = 0.25, text_cex = 0.8) +
   annotation_north_arrow(location = "tr", which_north = "true",
                          style = north_arrow_minimal(text_size = 9),
@@ -188,7 +204,7 @@ wi <- st_as_sf(maps::map("state", "wisconsin", plot = FALSE, fill = TRUE))
 site <- st_as_sfc(st_bbox(mill_sf)) %>% st_centroid()
 inset <- ggplot() +
   geom_sf(data = wi, fill = "grey95", colour = "grey30", linewidth = 0.3) +
-  geom_sf(data = site, shape = 21, fill = "#E85E0E", colour = "black", size = 2.6) +
+  geom_sf(data = site, shape = 21, fill = "black", colour = "black", size = 2.6) +
   theme_void() +
   theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.4),
         plot.background = element_rect(fill = "white", colour = NA))
