@@ -214,7 +214,11 @@ trait_groups <- list(
   drying_chemistry = list(
     traits = c("d13C", "d15N", "carbon_mg_g", "nitrogen_IRMS_mg_g", "phenolics_mg_g", "phenolics_sd",
               "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g", "oil_content_mg_g", "oil_mass_mg"),
-    group_var = "species_dry_treatment",
+    # Growth form x dry treatment, not species x dry treatment (Henry,
+    # 2026-10-19). Each assay now has one value per sample x dry treatment on
+    # one mill treatment's rows (EcoSISMetadataSidecar.R), so a species group
+    # holds 1-3 samples and never reaches the distribution check's min_n = 5.
+    group_var = "growth_form_dry_treatment",
     dedup_by = c("sample_name", "dry_treatment")
   ),
   brookside_elemental = list(
