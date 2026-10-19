@@ -171,24 +171,60 @@ curves <- cell %>%
           nrmse = 100 * sqrt(scatter^2 + (bias - delta)^2) / obs_range,
           nrmse_od = 100 * nrmse_od) %>%
   mutate(Milling = factor(mill_lab[Milling], levels = mill_lab))
-bands <- bem %>% distinct(Trait, scenario, delta, lo, hi)
+
+# Break-even range (FF NRMSE below OD NRMSE), shaded per panel
+breakeven <- bem %>% distinct(Trait, Milling, delta_lo, delta_hi) %>%
+  mutate(Milling = factor(mill_lab[Milling], levels = mill_lab))
+
+# Offset estimates as labelled interval bars stacked above the curves (one row
+# per estimate), rather than overlapping shaded bands, which were hard to tell
+# apart and needed a four-entry legend that applied to only half the panels.
+offset_lab <- c(
+  "Measured N offset (absolute, n=11)"    = "Measured N, absolute",
+  "Measured N offset (relative x mean N)" = "Measured N, relative",
+  "Proxy: measured C relative offset"     = "Proxy from C, relative",
+  "Proxy: measured N relative offset"     = "Proxy from N, relative")
+stopifnot(all(unique(bem$scenario) %in% names(offset_lab)))
+y_top <- max(curves$nrmse)
+estimates <- bem %>%
+  distinct(Trait, Milling, scenario, delta, lo, hi) %>%
+  mutate(Milling = factor(mill_lab[Milling], levels = mill_lab),
+         label = offset_lab[scenario]) %>%
+  group_by(Trait) %>%
+  mutate(y = y_top + 3 + 3.5 * (as.integer(factor(scenario)) - 1)) %>%
+  ungroup()
+
+# direct line labels in the first panel only
+first_panel <- curves %>% distinct(Trait, Milling) %>% slice(1)
+line_labs <- curves %>% semi_join(first_panel, join_by(Trait, Milling)) %>%
+  summarise(x_ff = max(delta) * 0.55,
+            y_ff = approx(delta, nrmse, max(delta) * 0.55)$y,
+            x_od = min(delta) * 0.95, y_od = first(nrmse_od),
+            .by = c(Trait, Milling))
 
 f1_plot <- ggplot(curves, aes(delta, nrmse)) +
-  geom_rect(data = bands, inherit.aes = FALSE,
-            aes(xmin = lo, xmax = hi, ymin = -Inf, ymax = Inf, fill = scenario),
-            alpha = 0.3) +
+  geom_rect(data = breakeven, inherit.aes = FALSE,
+            aes(xmin = delta_lo, xmax = delta_hi, ymin = -Inf, ymax = Inf),
+            fill = col_ff, alpha = 0.10) +
   geom_vline(xintercept = 0, linetype = "dotted") +
-  geom_line(color = col_ff, linewidth = 0.9) +
   geom_hline(aes(yintercept = nrmse_od), color = col_od, linewidth = 0.9) +
+  geom_line(color = col_ff, linewidth = 0.9) +
+  geom_errorbar(data = estimates, inherit.aes = FALSE, orientation = "y",
+                aes(xmin = lo, xmax = hi, y = y), width = 1.2, linewidth = 0.5) +
+  geom_point(data = estimates, inherit.aes = FALSE, aes(delta, y), size = 1.6) +
+  geom_text(data = estimates, inherit.aes = FALSE,
+            aes(x = hi, y = y, label = label), hjust = -0.08, size = 2.7) +
+  geom_text(data = line_labs, aes(x_ff, y_ff, label = "Freeze-dried"),
+            colour = col_ff, hjust = 1.1, vjust = 0, size = 3) +
+  geom_text(data = line_labs, aes(x_od, y_od, label = "Oven-dried"),
+            colour = col_od, hjust = 0, vjust = -0.6, size = 3) +
   facet_wrap(vars(Trait, Milling), scales = "free_x", ncol = 3) +
-  scale_fill_manual(values = c("grey35", "grey65", "grey50", "grey80"),
-                    name = "Offset estimate (95% CI)") +
+  scale_y_continuous(expand = expansion(mult = c(0.02, 0.04))) +
   labs(x = expression("Assumed true FF − OD reference offset (mg g"^-1*")"),
-       y = "NRMSE of freeze-dried prediction (%)",
-       caption = paste0("Blue: freeze-dried NRMSE as the reference offset varies.\n",
-                        "Orange: oven-dried NRMSE, same milling treatment. ",
-                        "Dotted: no offset (analysis as reported).")) +
-  guides(fill = guide_legend(nrow = 2)) +
+       y = "NRMSE (%)",
+       caption = paste0("Shaded: offsets over which freeze-dried NRMSE stays below ",
+                        "oven-dried NRMSE (break-even range). Bars: offset estimates ",
+                        "with 95% CI.\nDotted: no offset (analysis as reported).")) +
   theme_supp
 ggsave(file.path(dir_in, "F1_break_even.png"), f1_plot,
        width = 8, height = 6.5, dpi = 300, bg = "white")
