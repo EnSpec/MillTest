@@ -33,18 +33,21 @@ Assembled by `Workflow_Calculations/code/BuildDepositPackageA.R`, which rebuilds
 | `chemistry/` (isotope, TPC, ANKOM x4, fat assay, Brookside, leaf area; all cleaned Mill Test rows only) | <0.2M | **Replaces the raw `ChemResults/Brookside.csv`, isotope report and fat-assay workbook** that an earlier version of this table listed: those are lab logs shared with other projects (Brookside.csv holds ABOVE, BIOSCAPE, LNG24 and other rows) and are in neither package. |
 | `taxonomy/`, `README.txt`, `MANIFEST_md5.txt` | small | `README.txt` is generated from `derived/README_package_A_ecosis.txt` (server). |
 
-**Package B: Zenodo data record (own DOI; ~400 MB without the .asd files, ~500 MB with them)**
+**Package B: Zenodo data record (built 2026-10-19: 2851 files, 600.9 MB, `deposit/package_B/` on the server)**
 
-| File | Size | Note |
+Assembled by `Workflow_Calculations/code/BuildDepositPackageB.R` (rebuilds from scratch, checks file counts and that no non-MILL24 files, `.rds` fits or pilot sheets ship, writes `MANIFEST_md5.txt`). README source: `derived/README_package_B_zenodo.txt` (server).
+
+| Folder | Size | Note |
 |---|---|---|
-| `LeafScans/**/*.jpg` (incl. `PlantID/`) | 62M | Decided 2026-09-17 to include all of them. |
-| `spectralpredictr/SpectralPredictR_raw_spectra.csv` | 49M | Regenerable intermediate. |
-| `spectralpredictr/SpectralPredictR_VN_jumpcorrected_spectra.csv` | 93M | Regenerable intermediate; `DataJoin.R` reads it. |
-| `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | Regenerable intermediate. |
-| `BootstrappedData/` | 169M | Exhaustive 36-pair enumeration output (name is stale; see the to-do rename). |
-| `DrySpec/{FreezeDried,OvenDried}/*.asd` | 102M | Optional raw instrument files (2418 files); more justified if the aggregate step re-extracts from them. |
-| Raw source sheets (`mill_test_inventory_data_log.xlsx`, `Mill24_LMA.xlsx`, ANKOM and TPC workbooks), `derived/qc_review/qc_review_plots.pdf` (7M) and the "Collected but not used" groups below | small | Assigned to Package B (2026-10-19). The raw isotope report, fat-assay workbook and Brookside log are in neither package (shared with other projects). |
-| Package B README | small | Describes provenance of each file and points back to the EcoSIS package DOI. |
+| `DrySpec/` (2418 `.asd`) | 85M | Original uncorrected instrument files, both sessions of re-scanned sets. |
+| `LeafScans/` (101 `.jpg`, incl. `PlantID/`) | 70M | JPEGs only (no `Thumbs.db`). |
+| `spectral_intermediates/` | 117M | VN and 5 nm resampled spectra. The raw (jump-corrected) spectra are in Package A, so `SpectralPredictR_raw_spectra.csv` is not repeated. |
+| `BootstrappedData/` (264 CSVs) | 291M | Exhaustive 36-pair difference output (name is stale; see the to-do rename). |
+| `analysis_outputs/` | 29M | `spectral_difference`, `spectral_difference_vn`, `grind_variance`, `treatment_agreement`, `bootstrap`, `maps` (no tile cache), `anova` (**no `*_model.rds`**, ~280M each; summaries, diagnostics and figures ship). |
+| `qc_review/qc_review_plots.pdf` | 7.5M | |
+| `leaf_area_code/leaf_area_approvedbyTing.ipynb` | 17K | The leaf-area notebook used for the scans (Ting Zheng's code); copied into the repo at `Workflow_Calculations/code/leaf_area/` 2026-10-19. |
+| `raw_workbooks/` | 1.7M | ANKOM x2, TPC x4 (two from `chemistry_sample_handling/raw_chem_inputs`), `Mill24_LMA.xlsx`, and the inventory workbook as one CSV per sheet **without the `2022_MillTest` sheet** (an equipment pilot on WisAsp/SHIFT samples). All scanned cell by cell for other projects' sample IDs. |
+| Not shipped | | `LMA_Processing_Training/`, `Pictures/`, `derived/data_join/`, `derived/trait_comparisons/`, the raw isotope/fat-assay/Brookside logs. |
 
 **Cross-links to set once both DOIs exist:** EcoSIS description (short DOI list: Zenodo data record, protocol DOIs, later the paper); Zenodo record "related identifiers" (EcoSIS package, code repo); `CITATION.cff` (EcoSIS and data-record DOIs as related); manuscript Data availability (EcoSIS, data record, code repo). Order: EcoSIS package and data record first, then finalize `CITATION.cff`, then tag the code release.
 

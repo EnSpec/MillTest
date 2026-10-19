@@ -17,11 +17,18 @@ library(gtools)
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
                         unset = "/Volumes/Enspec/projects/Mill24")
 
-out_dir <- file.path(data_root, "BootstrappedData")
+# MILL24_BOOTSTRAP_OUT overrides the output folder (used to re-run into a
+# scratch folder and compare against the stored output).
+out_dir <- Sys.getenv("MILL24_BOOTSTRAP_OUT", unset = file.path(data_root, "BootstrappedData"))
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 
-spectraldata <- read.csv(file.path(data_root, "Mill24_RawSpec.csv")) %>%
+# Deduplicated, jump-corrected spectra (2376 scans; where a replicate set was
+# scanned twice only the later scan is kept). Until 2026-10-19 this read
+# Mill24_RawSpec.csv, which also carries the earlier scans of three re-scanned
+# sets (none of which are in the four compared pairs); the kept scans are
+# identical in both files to 1.5e-7. Mill24_RawSpec.csv is not deposited.
+spectraldata <- read.csv(file.path(data_root, "spectralpredictr", "SpectralPredictR_raw_spectra.csv")) %>%
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
