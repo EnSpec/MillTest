@@ -381,6 +381,14 @@ What runs, and what it found on the 2026-09-24 run (2376 spectra):
     level (a sample far from its species' centroid). The PCA is fit once
     across all spectra and both levels measured in that shared space; top 5
     PCs carry 97.3% of variance (98.8% on reflectance).
+    **Reviewed 2026-10-19 (Henry):** every flagged spectrum (18 angle, 24
+    within-sample PCA, and all scans of the 7 between-sample sets; 70 spectra
+    in all) was inspected on SNV and reflectance plots and **kept**. Reason:
+    this study is about naturally observed variation among replicates, so
+    removing the tails would bias it; a trait-mapping user may choose to
+    reject some. Per-spectrum decisions and rationales:
+    `derived/qc_review/qc_review_decisions.csv`; plots:
+    `qc_review_plots.pdf` (script `QCReviewPlots.R`). No removals result.
   - *`spectral_splice_jump`*: **skipped, by design.** It only means anything
     on uncorrected spectra, and `qc_detect_jump_corrected()` confirms both
     available CSVs are already corrected (exact `R(splice) == R(splice+1)`
