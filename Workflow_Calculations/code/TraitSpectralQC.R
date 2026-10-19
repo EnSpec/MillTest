@@ -133,8 +133,11 @@ for (chain_name in names(sequential_assay_chains)) {
 # trait broadcast across 6 replicate rows isn't treated as 6 independent
 # observations.
 run_group_checks_for_category <- function(category_name, spec) {
-  dedup_cols <- unique(c(spec$dedup_by, "species_code", "growth_form",
-                        "mill_treatment", "dry_treatment", spec$group_var))
+  # Dedup at the category's own grain (spec$dedup_by). mill_treatment and
+  # dry_treatment are NOT added unless the category varies by them: adding
+  # them kept one copy per mill/dry row, so tree-level and Brookside values
+  # were counted 3x (and 6x) toward the distribution check's min_n.
+  dedup_cols <- unique(c(spec$dedup_by, "species_code", "growth_form", spec$group_var))
   dedup_cols <- dedup_cols[dedup_cols %in% names(sidecar)]
 
   cat_df <- sidecar %>%
