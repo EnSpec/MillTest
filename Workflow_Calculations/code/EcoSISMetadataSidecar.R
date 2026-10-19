@@ -112,8 +112,8 @@ fat_assay <- read.csv(file.path(data_root, "derived", "fat_assay", "fat_assay_mi
 
 # Mill treatment of the powder each assay was run on (2026-10-19, Henry).
 # Isotope, TPC and fat assay: ball mill (BALL). ANKOM: 20-mesh (TWEN), an
-# assay requirement. The fat assay basis is from Zach's recollection and is
-# pending a second confirmation. Assay values are NA on the other mill
+# assay requirement. The fat assay basis was confirmed independently by Zach
+# and a second person (2026-10-19). Assay values are NA on the other mill
 # treatments' rows, since no assay was run on that material.
 # Brookside (OD, 20-mesh) is deliberately NOT restricted: it is joined at the
 # Sample_ID level as the common reference for every treatment.
