@@ -57,6 +57,11 @@
 # other tree-level fields; lma_g_m2 is computed here from that plus the
 # Dry_mass already joined in from sample_info.csv.
 
+# 2026-10-19 (Henry): isotope, TPC and fat assay values are attached to BALL
+# rows only and ANKOM values to TWEN (20-mesh) rows only, matching the powder
+# each assay was run on. Previously they were copied across all three mill
+# treatments, which overstated what was measured.
+
 library(tidyverse)
 
 # --- data location (see README) --------------------------------------------
@@ -92,9 +97,9 @@ particle_size <- read.csv(file.path(data_root, "derived", "particle_size",
 
 # Per-sample x DRY-treatment chemistry (isotope, TPC, ANKOM, fat assay) --
 # see IsotopeExtract.R / TPCExtract.R / AnkomExtract.R / FatAssayExtract.R.
-# Not per-replicate or per-mill-treatment (these assays were only run once
-# per sample x drying treatment), so every mill treatment x replicate row
-# within a sample x dry treatment gets the same values. None of these cover
+# Each assay was run once per sample x drying treatment, on ONE mill
+# treatment's powder (see assay_mill_basis below), so the value is attached
+# to that mill treatment's replicate rows only. None of these cover
 # every sample -- isotope is 11 samples, TPC/ANKOM are subsets too -- NA
 # elsewhere is expected, not a join bug. Henry's call 2026-09-17: worth
 # joining these directly into the sidecar rather than only shipping raw
@@ -104,6 +109,19 @@ isotope <- read.csv(file.path(data_root, "derived", "isotope", "isotope_mill_tes
 tpc     <- read.csv(file.path(data_root, "derived", "tpc", "tpc_mill_test.csv"))
 ankom   <- read.csv(file.path(data_root, "derived", "ankom", "ankom_mill_test.csv"))
 fat_assay <- read.csv(file.path(data_root, "derived", "fat_assay", "fat_assay_mill_test.csv"))
+
+# Mill treatment of the powder each assay was run on (2026-10-19, Henry).
+# Isotope, TPC and fat assay: ball mill (BALL). ANKOM: 20-mesh (TWEN), an
+# assay requirement. The fat assay basis is from Zach's recollection and is
+# pending a second confirmation. Assay values are NA on the other mill
+# treatments' rows, since no assay was run on that material.
+# Brookside (OD, 20-mesh) is deliberately NOT restricted: it is joined at the
+# Sample_ID level as the common reference for every treatment.
+assay_mill_basis <- c(isotope = "BALL", tpc = "BALL", ankom = "TWEN", fat_assay = "BALL")
+isotope   <- mutate(isotope,   mill_treatment = assay_mill_basis[["isotope"]])
+tpc       <- mutate(tpc,       mill_treatment = assay_mill_basis[["tpc"]])
+ankom     <- mutate(ankom,     mill_treatment = assay_mill_basis[["ankom"]])
+fat_assay <- mutate(fat_assay, mill_treatment = assay_mill_basis[["fat_assay"]])
 
 # Per-sample (not per-treatment) full elemental panel -- see
 # BrooksideExtract.R. One Brookside assay per sample (OD + 20-mesh material
@@ -143,10 +161,12 @@ ecosis_sidecar <- spec_meta %>%
     particle_size,
     by = c("SampleID" = "Sample", "mill_treatment_label" = "Treatment")
   ) %>%
-  left_join(isotope,   by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
-  left_join(tpc,       by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
-  left_join(ankom,     by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
-  left_join(fat_assay, by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment")) %>%
+  # Each assay is joined only on the mill treatment of the powder it was run
+  # on (assay_mill_basis above), so the value is NA on the other mill rows.
+  left_join(isotope,   by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment", "MillTreat" = "mill_treatment")) %>%
+  left_join(tpc,       by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment", "MillTreat" = "mill_treatment")) %>%
+  left_join(ankom,     by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment", "MillTreat" = "mill_treatment")) %>%
+  left_join(fat_assay, by = c("SampleID" = "Sample_ID", "DryTreat" = "dry_treatment", "MillTreat" = "mill_treatment")) %>%
   left_join(brookside, by = c("SampleID" = "Sample_ID")) %>%
   left_join(leaf_area, by = c("SampleID" = "Sample_ID")) %>%
   transmute(

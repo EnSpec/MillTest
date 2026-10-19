@@ -510,10 +510,13 @@ All four raw source files above are still included in the deposit zip
 (reproducibility/provenance), but are no longer the primary form this data
 takes — see `derived/ecosis/spectral_metadata_sidecar.csv`'s row in the
 table above for the joined version. The isotope/TPC/ANKOM/fat-assay values
-are per-sample x drying-treatment, not per-replicate or per-mill-treatment
-(none of these assays were re-run per mill treatment), so every mill
-treatment x replicate row within a sample x dry treatment shares the same
-joined value — expected, not a join bug. Coverage is partial for all four
+are per-sample x drying-treatment, and each was run on one mill
+treatment's powder (2026-10-19): isotope, TPC and fat assay on ball-milled
+(BALL) powder, ANKOM on 20-mesh (TWEN). The sidecar attaches each value to
+that mill treatment's rows only and leaves the other mill rows NA. Fat assay
+basis is from Zach's recollection, pending a second confirmation. Brookside
+(OD, 20-mesh) is the exception: joined at the Sample_ID level as the common
+reference. Coverage is partial for all four
 (isotope 11 samples, TPC 60, ANKOM 23, fat assay 8) — NA elsewhere.
 
 Henry: "we did a lot of this already in a different project" — confirmed:
