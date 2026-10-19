@@ -67,6 +67,16 @@ spec <- read.csv(file.path(data_root, "spectralpredictr",
 names(spec) <- sub("^X", "", names(spec))
 stopifnot(!anyDuplicated(spec$sample_name), all(as.character(wl_full) %in% names(spec)))
 
+# Restrict to the 61-tree / 11-species study design described in the methods,
+# as in Table1_SpectralDifferenceRegions.R: drops the forbs, graminoid and the
+# single honey locust (GLTR) that were scanned but are not part of the design.
+design_ids <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
+  filter(Type %in% c("Broadleaf", "Conifer"), Species_Code != "GLTR") %>%
+  pull(Sample_ID)
+spec <- spec[substring(spec$sample_name, 1, 11) %in% design_ids, ]
+stopifnot(n_distinct(substring(spec$sample_name, 1, 11)) == 61)
+message("design spectra: ", nrow(spec), " scans from 61 trees")
+
 # MILL24_<id>_<drying>_<milling>_<replicate>
 parts <- str_split_fixed(spec$sample_name, "_", 5)
 f_ind  <- paste(parts[, 1], parts[, 2], sep = "_")

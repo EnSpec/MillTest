@@ -53,8 +53,11 @@ X <- as.matrix(spec[, wl_cols])
 
 sampleinfo <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
   rename(sample_name = Sample_ID) %>%
-  select(sample_name, Type) %>%
-  filter(Type %in% c("Broadleaf", "Conifer")) %>%
+  select(sample_name, Species_Code, Type) %>%
+  # 61-tree / 11-species study design: also drops the single honey locust
+  # (GLTR), as in Table1_SpectralDifferenceRegions.R
+  filter(Type %in% c("Broadleaf", "Conifer"), Species_Code != "GLTR") %>%
+  select(-Species_Code) %>%
   mutate(Type = recode(Type, "Conifer" = "Needle-Leaf"))
 
 # treatment1 - treatment2, as in BootstrapCode.R's output file names
