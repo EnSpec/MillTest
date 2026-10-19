@@ -27,17 +27,20 @@ BootDataFull <- lapply(file_list, read.csv) %>%
 
 sampleinfo <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
   rename(sample_name = Sample_ID) %>%
-  select(sample_name, Type)
+  select(sample_name, Species_Code, Type)
 
+# Restrict to the 61-tree / 11-species study design described in the methods:
+# drops the forbs and graminoid and the single honey locust (GLTR), matching
+# Table1_SpectralDifferenceRegions.R and Predicted_Trait_Analysis.R.
 BootDataSampleMean <- BootDataFull %>% 
   group_by(sample_name, treatment1, treatment2) %>% 
   summarize(across(everything(), mean)) %>% 
   mutate(stat = "Sample")
 
 BootDataSampleMean <- full_join(BootDataSampleMean, sampleinfo, join_by(sample_name)) %>% 
-  select(sample_name, treatment1, treatment2, Type, everything()) %>% 
-  filter(Type != "Forb") %>% 
-  filter(Type != "Graminoid") %>% 
+  select(sample_name, treatment1, treatment2, Type, everything()) %>%
+  filter(Type %in% c("Broadleaf", "Conifer"), Species_Code != "GLTR") %>%
+  select(-Species_Code) %>%
   mutate(Type = recode(Type, "Conifer" = "Needle-Leaf")) %>% 
   drop_na()
 
