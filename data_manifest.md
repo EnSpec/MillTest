@@ -18,18 +18,20 @@ users, not the project's own scope history.
 
 **Why:** Kate Thompson (EcoSIS), relaying Justin, 2026-09-30: no hard size limit, but ~50 MB is getting close and ~100 MB only if absolutely required; put intermediate processing data elsewhere (GitHub etc.) and link it from the EcoSIS package; multiple related submissions are fine if the description explains how they connect. Henry's decision: **hybrid**. The spectra and their metadata go to EcoSIS regardless; everything else goes to a Zenodo data record with its own DOI, linked from the EcoSIS description (editable after publication, no new DOI). The code repo keeps its own separate Zenodo DOI. The groupings below are a proposal from that decision; confirm each assignment before assembling.
 
-**Package A: EcoSIS (target ~60-65 MB)**
+**Package A: EcoSIS (built 2026-10-19: 138 files, 58.5 MB, `deposit/package_A/` on the server)**
+
+Assembled by `Workflow_Calculations/code/BuildDepositPackageA.R`, which rebuilds the folder from scratch, checks it (spectra and sidecar keys match; no non-MILL24 sample IDs in the chemistry files) and writes `MANIFEST_md5.txt`.
 
 | File | Size | Note |
 |---|---|---|
-| `Mill24_RawSpec.csv` | 58M | Spectra (already jump-corrected despite the name; see the Must-include table). If the raw aggregate is rebuilt, regenerate everything downstream first. |
-| `derived/ecosis/spectral_metadata_sidecar.csv` and `derived/qc/*` (flag columns, removal log, QC summary) | ~3-5M | Decide whether the QC-flagged sidecar replaces the plain sidecar or ships alongside it. Regenerate after the QC re-run and the coordinate fix. |
-| `field_data/sample_info.csv` | 10K | Coordinates rebuilt 2026-09-30 by `SampleCoordinates.R` (see "Sample coordinates" below). |
-| `field_data/raw_coordinates/` (Google Maps list snapshot + LSNP24 crown centers) and `derived/field/{sample_coordinates,cross_project_sample_links}.csv` | <100K | Raw coordinate sources and the per-sample provenance/link tables. |
-| `ChemResults/Brookside.csv` | 54K | Observed chemistry. |
-| `particle_size/data/full/**/*.csv` | 2.1M | Raw LS 13320 exports. |
-| `spectralpredictr/DimensionsDryTraitPredictions.csv` | 1.6M | Small and used by the manuscript's RMSE analysis; proposed to stay with the spectra (could move to Package B). |
-| Deposit README (`derived/README_mill_test_chemistry_and_spectroscopy.txt`) | small | Must be rewritten for the split: state what is in this package, and point to Package B by DOI in the EcoSIS description (not in the README file, which locks after deposit). |
+| `Mill24_spectra_jumpcorrected.csv` | 50.6M | The deduplicated, jump-corrected spectra from `spectralpredictr/SpectralPredictR_raw_spectra.csv` (2376 scans, key column `spectra`, bare-nm headers 350-2500, 7 decimals). **Replaces `Mill24_RawSpec.csv`**, which has 18 extra rows (the earlier scans of re-scanned sets) and no `spectra` key; the two agree to 1.5e-7 on every kept scan. |
+| `spectral_metadata_sidecar.csv` and `spectral_metadata_sidecar_with_qc_flags.csv` | 3.7M | Both ship (the README explains how they relate). |
+| `qc/` (45 flag/summary CSVs, `removal_log.csv`) and `qc/qc_review_decisions.csv` | 2.3M | The spectral shape review: all 70 flagged spectra kept (2026-10-19). `qc_review_plots.pdf` (7M) goes to Package B. |
+| `predicted_traits/DimensionsDryTraitPredictions.csv` | 1.6M | |
+| `field_data/` (`sample_info.csv`, `sample_coordinates.csv`, `cross_project_sample_links.csv`, `raw_coordinates/`) | <0.3M | Coordinates rebuilt 2026-09-30. |
+| `particle_size/` (per-sample and summary CSVs, `raw_exports/`, `raw_exports_pilot_Jun13/`) | 2.2M | |
+| `chemistry/` (isotope, TPC, ANKOM x4, fat assay, Brookside, leaf area; all cleaned Mill Test rows only) | <0.2M | **Replaces the raw `ChemResults/Brookside.csv`, isotope report and fat-assay workbook** that an earlier version of this table listed: those are lab logs shared with other projects (Brookside.csv holds ABOVE, BIOSCAPE, LNG24 and other rows) and are in neither package. |
+| `taxonomy/`, `README.txt`, `MANIFEST_md5.txt` | small | `README.txt` is generated from `derived/README_package_A_ecosis.txt` (server). |
 
 **Package B: Zenodo data record (own DOI; ~400 MB without the .asd files, ~500 MB with them)**
 
@@ -41,7 +43,7 @@ users, not the project's own scope history.
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | Regenerable intermediate. |
 | `BootstrappedData/` | 169M | Exhaustive 36-pair enumeration output (name is stale; see the to-do rename). |
 | `DrySpec/{FreezeDried,OvenDried}/*.asd` | 102M | Optional raw instrument files (2418 files); more justified if the aggregate step re-extracts from them. |
-| Raw source sheets (LMA, chlorophyll, ANKOM, TPC, etc.) and the "Collected but not used" groups below | small | Not yet assigned; decide per file group whether small tabular data belongs with the spectra (Package A) or with the archive (Package B). |
+| Raw source sheets (`mill_test_inventory_data_log.xlsx`, `Mill24_LMA.xlsx`, ANKOM and TPC workbooks), `derived/qc_review/qc_review_plots.pdf` (7M) and the "Collected but not used" groups below | small | Assigned to Package B (2026-10-19). The raw isotope report, fat-assay workbook and Brookside log are in neither package (shared with other projects). |
 | Package B README | small | Describes provenance of each file and points back to the EcoSIS package DOI. |
 
 **Cross-links to set once both DOIs exist:** EcoSIS description (short DOI list: Zenodo data record, protocol DOIs, later the paper); Zenodo record "related identifiers" (EcoSIS package, code repo); `CITATION.cff` (EcoSIS and data-record DOIs as related); manuscript Data availability (EcoSIS, data record, code repo). Order: EcoSIS package and data record first, then finalize `CITATION.cff`, then tag the code release.
