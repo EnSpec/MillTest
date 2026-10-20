@@ -41,8 +41,8 @@ Assembled by `Workflow_Calculations/code/BuildDepositPackageB.R` (rebuilds from 
 | `DrySpec/` (2418 `.asd`) | 85M | Original uncorrected instrument files, both sessions of re-scanned sets. |
 | `LeafScans/` (101 `.jpg`, incl. `PlantID/`) | 70M | JPEGs only (no `Thumbs.db`). |
 | `spectral_intermediates/` | 117M | VN and 5 nm resampled spectra. The raw (jump-corrected) spectra are in Package A, so `SpectralPredictR_raw_spectra.csv` is not repeated. |
-| `BootstrappedData/` (264 CSVs) | 291M | Exhaustive 36-pair difference output (name is stale; see the to-do rename). |
-| `analysis_outputs/` | 586M | `spectral_difference`, `spectral_difference_vn`, `grind_variance`, `treatment_agreement`, `bootstrap`, `maps` (no tile cache), `anova` (summaries, diagnostics, figures **and the two brms fits `*_model.rds`**, ~280M each). |
+| `ReplicatePairDifferences/` (264 CSVs) | 291M | Exhaustive 36-pair difference output (renamed from `BootstrappedData/` 2026-10-20). |
+| `analysis_outputs/` | 586M | `spectral_difference`, `spectral_difference_vn`, `grind_variance`, `treatment_agreement`, `replicate_pair_differences`, `maps` (no tile cache), `anova` (summaries, diagnostics, figures **and the two brms fits `*_model.rds`**, ~280M each). |
 | `qc_review/qc_review_plots.pdf` | 7.5M | |
 | `leaf_area_code/leaf_area.ipynb` | 17K | The leaf-area notebook used for the scans (Ting Zheng's code; originally `leaf_area_approvedbyTing.ipynb`, renamed 2026-10-20); copied into the repo at `Workflow_Calculations/code/leaf_area/` 2026-10-19. |
 | `raw_workbooks/` | 1.7M | ANKOM x2, TPC x4 (two from `chemistry_sample_handling/raw_chem_inputs`), `Mill24_LMA.xlsx`, and the inventory workbook as one CSV per sheet **without the `2022_MillTest` sheet** (an equipment pilot on WisAsp/SHIFT samples). All scanned cell by cell for other projects' sample IDs. |
@@ -83,7 +83,7 @@ same numbers used in the manuscript.
 | `spectralpredictr/SpectralPredictR_raw_spectra.csv` | 49M | same script — jump-corrected spectra, pre-normalization |
 | `spectralpredictr/SpectralPredictR_VN_jumpcorrected_spectra.csv` | 93M | same script — `spectrolab::normalize()` output. **Not actually used downstream within SpectralPredictR.R itself** (a dead end within that script), but `DataJoin.R` reads it. |
 | `spectralpredictr/SpectralPredictR_5nmresampled_spectra.csv` | 19M | same script — 5 nm resampled, vector-normalized |
-| `BootstrappedData/` | **169M** | `Workflow_Calculations/code/BootstrapCode.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
+| `ReplicatePairDifferences/` | **169M** | `Workflow_Calculations/code/ReplicatePairDifferences.R` — per-sample, per-treatment-comparison difference-spectrum output. **Regenerated 2026-09-15** with the final procedure: exhaustive enumeration of all 6x6=36 replicate-pair combinations (not a random bootstrap draw), which is why this is now ~170M instead of the previous ~4.9G — small enough that including it raw in the deposit is a reasonable option now, not just documenting the method. |
 | `derived/spectral_difference/` (`table1_spectral_regions_long.csv`, `_wide.csv`, `table1.docx`, `table1.tex`, `particle_size_*.csv`) | <1M | `Table1_SpectralDifferenceRegions.R` — Table 1 as mean ± 95% CI across trees (n = 61 / 30 / 31), with SD and within-tree replicate-pair SD in the long CSV; `ParticleSizeGrowthFormConfound.R` — particle size by growth form and the particle-size / growth-form regression for the milling contrast. |
 | `derived/anova/` (`variance_decomposition.csv`, `variance_shares.png`, `effects_and_variance.png`, `ppc_combined.png`, `*_coefficients_MCMCvis.jpeg`) | ~3M | `Workflow_Analysis/AnovaVarianceAndChecks.R` — post-processing of the saved brms fits (`*_model.rds` from `Predicted_Trait_Analysis.R`): variance shares by level with 95% intervals, posterior predictive checks, coefficient plot. |
 | `derived/maps/sample_locations.png` | <1M | `Workflow_Visualization/Map_Visualization.R` — supplement map of the 61 sampled trees on a public-domain USGS National Map basemap (tiles cached in `derived/maps/tile_cache/`, not deposited), with scale bar, north arrow and Wisconsin inset. |
@@ -439,7 +439,7 @@ range).
 
 ## Collected but not used in the manuscript — Henry wants these deposited anyway
 
-**New 2026-09-16**: `Mill24_RawSpec.csv` / `DrySpec/` / `BootstrappedData/`
+**New 2026-09-16**: `Mill24_RawSpec.csv` / `DrySpec/` / `ReplicatePairDifferences/`
 carry 66 samples, not the manuscript's 61. 5 are out of the manuscript's
 scope, confirmed with Henry:
 - `MILL24_0003`, `MILL24_0004` (Type=Forb, American pokeweed) and

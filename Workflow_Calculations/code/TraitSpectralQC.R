@@ -400,8 +400,8 @@ message(sprintf("Shape checks on SNV spectra, %g-%g nm (%d bands)",
                 shape_qc_transform$range[1], shape_qc_transform$range[2], length(shape_cols)))
 
 # Grouping unit = one spectral replicate set (sample x mill treatment x dry
-# treatment, ~6 replicates) -- matches how the manuscript's own bootstrap
-# procedure treats replicate sets (BootstrapCode.R), and is the level at
+# treatment, ~6 replicates) -- matches how the manuscript's own replicate-pair difference
+# procedure treats replicate sets (ReplicatePairDifferences.R), and is the level at
 # which "the probe wasn't on the sample right for this one scan" would show
 # up against its own siblings.
 stopifnot("the angle threshold is calibrated as an absolute angle" =

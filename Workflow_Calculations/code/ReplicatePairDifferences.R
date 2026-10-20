@@ -1,6 +1,6 @@
 #########################################################
 #
-# Mill Test Bootstrap Resampling
+# Mill Test Replicate-Pair Differences
 #
 # Authors: Zach Breuer, Mill Test Team
 #
@@ -17,9 +17,9 @@ library(gtools)
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
                         unset = "/Volumes/Enspec/projects/Mill24")
 
-# MILL24_BOOTSTRAP_OUT overrides the output folder (used to re-run into a
+# MILL24_REPLICATE_DIFF_OUT overrides the output folder (used to re-run into a
 # scratch folder and compare against the stored output).
-out_dir <- Sys.getenv("MILL24_BOOTSTRAP_OUT", unset = file.path(data_root, "BootstrappedData"))
+out_dir <- Sys.getenv("MILL24_REPLICATE_DIFF_OUT", unset = file.path(data_root, "ReplicatePairDifferences"))
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 
@@ -41,14 +41,16 @@ spectraldata <- read.csv(file.path(data_root, "spectralpredictr", "SpectralPredi
 # versions both did) just redraws the same combinations repeatedly with
 # gaps and duplicates -- exhaustively computing all of them directly is
 # both more complete and far cheaper than any amount of random sampling.
-# This is no longer really a "bootstrap" in the resampling sense, though
-# the script/folder names are kept for continuity with everything already
-# built around them (BootstrappedData/, BootstrapFigureGeneration.R).
+# This is not a resampling bootstrap. The script, its figure script and the
+# output folder were renamed 2026-10-20 (from BootstrapCode.R,
+# BootstrapFigureGeneration.R and BootstrappedData/) to say what they do:
+# ReplicatePairDifferences.R, ReplicatePairDifferenceFigure.R and
+# ReplicatePairDifferences/.
 # No parallel cluster needed either -- 66 samples x 4 comparisons x 36
 # combinations = 9,504 total rows, trivially fast to compute directly.
 # Manuscript methods text (currently "a random replicate was chosen...
 # iterated N times") needs rewriting to describe full enumeration, not a
-# bootstrap draw count.
+# random-draw count.
 
 for(sample in unique(spectraldata$SampleID)) {
 spectraldatasubset <- spectraldata %>%

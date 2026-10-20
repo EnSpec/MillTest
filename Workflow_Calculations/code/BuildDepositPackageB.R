@@ -70,12 +70,12 @@ n$leaf   <- copy_tree(d("LeafScans"), "LeafScans", pattern = "\\.jpg$")
 put(d("spectralpredictr", "SpectralPredictR_VN_jumpcorrected_spectra.csv"), "spectral_intermediates")
 put(d("spectralpredictr", "SpectralPredictR_5nmresampled_spectra.csv"), "spectral_intermediates")
 
-# --- replicate-pair difference spectra (BootstrapCode.R output) ------------------------
-n$diff <- copy_tree(d("BootstrappedData"), "BootstrappedData", pattern = "\\.csv$")
+# --- replicate-pair difference spectra (ReplicatePairDifferences.R output) ------------------------
+n$diff <- copy_tree(d("ReplicatePairDifferences"), "ReplicatePairDifferences", pattern = "\\.csv$")
 
 # --- manuscript analysis outputs (small; code regenerates them) ---------------------------
 for (sub in c("spectral_difference", "spectral_difference_vn", "grind_variance",
-              "treatment_agreement", "bootstrap")) {
+              "treatment_agreement", "replicate_pair_differences")) {
   invisible(copy_tree(d("derived", sub), file.path("analysis_outputs", sub)))
 }
 invisible(copy_tree(d("derived", "maps"), file.path("analysis_outputs", "maps"), exclude = "tile_cache"))
@@ -121,7 +121,7 @@ stopifnot(
 )
 asd <- list.files(file.path(pkg, "DrySpec"), recursive = TRUE, pattern = "\\.asd$")
 stopifnot("an .asd file is not a MILL24 sample" = all(grepl("^MILL24_", basename(asd))))
-stopifnot("one bootstrap output per sample x comparison expected (66 x 4)" = n$diff == 264)
+stopifnot("one difference file per sample x comparison expected (66 x 4)" = n$diff == 264)
 
 files <- list.files(pkg, recursive = TRUE)
 files <- files[files != "MANIFEST_md5.txt"]

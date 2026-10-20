@@ -20,7 +20,7 @@ library(tidyverse)
 
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
                         unset = "/Volumes/Enspec/projects/Mill24")
-boot_dir <- file.path(data_root, "BootstrappedData")
+boot_dir <- file.path(data_root, "ReplicatePairDifferences")
 out_dir  <- file.path(data_root, "derived", "spectral_difference")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 

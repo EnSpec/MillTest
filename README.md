@@ -32,7 +32,7 @@ Spectral file names follow `MILL24_<id>_<drying>_<milling>_<replicate>`, e.g.
 Trait-prediction inputs from SpectralPredictR carry the same information in a
 `sampledata_head` column.
 
-> Some scripts (`BootstrapCode.R`, `DataJoin.R`, `ChemistryAnalysis.R`)
+> Some scripts (`ReplicatePairDifferences.R`, `DataJoin.R`, `ChemistryAnalysis.R`)
 > extract the drying/milling codes with fixed-offset `substring()` calls
 > into `sample_name` rather than parsing delimited fields. Works for every
 > name in this dataset; noted as a fragility for future naming-convention
@@ -152,12 +152,12 @@ step's inputs come from an earlier step, that's noted explicitly.
     tree, tree × treatment combination, residual; posterior shares and the
     species-to-treatment SD ratio), posterior predictive check figures, and
     the coefficient plot regenerated with corrected random-effect labels.
-11. `Workflow_Calculations/code/BootstrapCode.R` — the manuscript's
+11. `Workflow_Calculations/code/ReplicatePairDifferences.R` — the manuscript's
     difference-spectrum method: for each sample × treatment-pair, computes
     the spectral difference for all 36 replicate-pair combinations
     (exhaustive, not a random draw — see `REPOSITORY_NOTES.md` for why).
-    Writes one CSV per sample × pair to `BootstrappedData/`.
-12. `Workflow_Calculations/code/BootstrapFigureGeneration.R` — the
+    Writes one CSV per sample × pair to `ReplicatePairDifferences/`.
+12. `Workflow_Calculations/code/ReplicatePairDifferenceFigure.R` — the
     difference-spectrum figure and cross-treatment summary table from
     step 11's output.
 13. `Workflow_Calculations/code/Table1_SpectralDifferenceRegions.R` and
