@@ -146,7 +146,7 @@ run_group_checks_for_category <- function(category_name, spec) {
 
   id_cols <- spec$dedup_by
 
-  for (tr in spec$traits) {
+  for (tr in setdiff(spec$traits, thresholds$group_check_exclude)) {
     if (!tr %in% names(cat_df)) next
 
     mag_flags <- qc_magnitude_shift(cat_df, spec$group_var, tr, id_cols,
@@ -157,7 +157,8 @@ run_group_checks_for_category <- function(category_name, spec) {
     }
 
     dist_flags <- qc_distribution_outliers(cat_df, spec$group_var, tr, id_cols,
-                                           z_threshold = thresholds$distribution_z)
+                                           z_threshold = if (tr %in% names(thresholds$distribution_z_by_trait))
+                                             thresholds$distribution_z_by_trait[[tr]] else thresholds$distribution_z)
     if (nrow(dist_flags) > 0) {
       flag_list[[paste0(category_name, "_", tr, "_distribution")]] <<-
         qc_write_log(dist_flags, out_dir, paste0(category_name, "_", tr, "_distribution"))
