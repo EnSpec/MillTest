@@ -95,6 +95,26 @@ inventory <- read_excel(
   select(SampleID, DryTreat, MillTreat, Grind_Date, Grind_Person,
         Spectra_Date_inventory, Spectra_Person, Notes)
 
+# Correction to the inventory (Henry, 2026-10-20): MILL24_0032 FF SIXT is
+# logged as ground 2024-02-07, six months BEFORE the field collection
+# (2024-08-08). Every other FF 60-mesh grind falls 2025-02-03 to 2025-02-25,
+# and 2025-02-07 was a real grinding day (nine samples, including 0027 and
+# 0031), so this is a year typo; the date is set to 2025-02-07. The source
+# workbook is left as found. The grinder could not recall the exact date.
+bad <- inventory$SampleID == "MILL24_0032" & inventory$DryTreat == "FF" &
+  inventory$MillTreat == "SIXT"
+if (any(bad)) {
+  if (inventory$Grind_Date[bad] == "2024-02-07") {
+    inventory$Grind_Date[bad] <- "2025-02-07"
+  } else {
+    message("MILL24_0032 FF SIXT grind date is no longer 2024-02-07 in the inventory; correction not applied.")
+  }
+}
+# A grind date earlier than the first field collection (2024-07-30) is a data
+# error, not a real date. Stop rather than ship it.
+early <- inventory %>% filter(!is.na(Grind_Date), Grind_Date < "2024-07-30")
+stopifnot("grind date earlier than the first sampling date (2024-07-30) in the inventory" = nrow(early) == 0)
+
 # --- join + write ------------------------------------------------------
 
 spectral_metadata <- asd_meta %>%
