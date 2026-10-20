@@ -45,7 +45,7 @@ Assembled by `Workflow_Calculations/code/BuildDepositPackageB.R` (rebuilds from 
 | `BootstrappedData/` (264 CSVs) | 291M | Exhaustive 36-pair difference output (name is stale; see the to-do rename). |
 | `analysis_outputs/` | 586M | `spectral_difference`, `spectral_difference_vn`, `grind_variance`, `treatment_agreement`, `bootstrap`, `maps` (no tile cache), `anova` (summaries, diagnostics, figures **and the two brms fits `*_model.rds`**, ~280M each). |
 | `qc_review/qc_review_plots.pdf` | 7.5M | |
-| `leaf_area_code/leaf_area_approvedbyTing.ipynb` | 17K | The leaf-area notebook used for the scans (Ting Zheng's code); copied into the repo at `Workflow_Calculations/code/leaf_area/` 2026-10-19. |
+| `leaf_area_code/leaf_area.ipynb` | 17K | The leaf-area notebook used for the scans (Ting Zheng's code; originally `leaf_area_approvedbyTing.ipynb`, renamed 2026-10-20); copied into the repo at `Workflow_Calculations/code/leaf_area/` 2026-10-19. |
 | `raw_workbooks/` | 1.7M | ANKOM x2, TPC x4 (two from `chemistry_sample_handling/raw_chem_inputs`), `Mill24_LMA.xlsx`, and the inventory workbook as one CSV per sheet **without the `2022_MillTest` sheet** (an equipment pilot on WisAsp/SHIFT samples). All scanned cell by cell for other projects' sample IDs. |
 | Not shipped | | `LMA_Processing_Training/`, `Pictures/`, `derived/data_join/`, `derived/trait_comparisons/`, the raw isotope/fat-assay/Brookside logs. |
 
