@@ -1,6 +1,6 @@
 #############################################
 #
-# Bootstrapped Code Visualizations and Stats
+# Replicate-Pair Difference Figure and Stats
 #
 # Authors: Mill Test Team
 #
@@ -16,10 +16,10 @@ library(tidyverse)
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
                         unset = "/Volumes/Enspec/projects/Mill24")
 
-out_dir <- file.path(data_root, "derived", "bootstrap")
+out_dir <- file.path(data_root, "derived", "replicate_pair_differences")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-file_list <- list.files(path = file.path(data_root, "BootstrappedData"), pattern = ".csv", full.names = TRUE)
+file_list <- list.files(path = file.path(data_root, "ReplicatePairDifferences"), pattern = ".csv", full.names = TRUE)
 
 BootDataFull <- lapply(file_list, read.csv) %>%
   bind_rows()
@@ -87,7 +87,7 @@ workingplot = ggplot() +
   theme(legend.position = "none", strip.text = element_text(size = 15), axis.title = element_text(size = 20)) 
 workingplot
 
-ggsave(file.path(out_dir, "BootstrapBiasChart.png"), workingplot, dpi = 300, scale = 4, width = 4, height = 3)
+ggsave(file.path(out_dir, "ReplicatePairDifferenceChart.png"), workingplot, dpi = 300, scale = 4, width = 4, height = 3)
 
 # Region-by-growth-form summaries of these differences (Table 1) are computed in
 # Table1_SpectralDifferenceRegions.R, and per-wavelength peaks in

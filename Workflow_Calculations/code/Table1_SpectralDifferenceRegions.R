@@ -6,7 +6,7 @@
 #
 # Purpose: Regenerate the manuscript's Table 1 (mean reflectance-percentage-
 # point difference by spectral region, treatment comparison, and growth
-# form) directly from BootstrappedData/ in R, replacing the hand-typed LaTeX
+# form) directly from ReplicatePairDifferences/ in R, replacing the hand-typed LaTeX
 # table (Nov 2025) to remove any risk of transcription error.
 # Cells are mean +/- the half-width of the t-based 95% CI across trees
 # (n = 61 all, 30 broadleaf, 31 needle-leaved); SD, n and the typical
@@ -23,7 +23,7 @@ library(officer)
 # --- data location (see README) --------------------------------------------
 data_root <- Sys.getenv("MILL24_DATA_ROOT",
                         unset = "/Volumes/Enspec/projects/Mill24")
-boot_dir <- file.path(data_root, "BootstrappedData")
+boot_dir <- file.path(data_root, "ReplicatePairDifferences")
 out_dir  <- file.path(data_root, "derived", "spectral_difference")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -31,7 +31,7 @@ sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %
   select(Sample_ID, Species_Code, Type) %>%
   distinct()
 
-# The spectral dataset behind BootstrappedData/ carries 66 samples, more
+# The spectral dataset behind ReplicatePairDifferences/ carries 66 samples, more
 # than the manuscript's 61-individual/11-species design: 2 Forb (pokeweed)
 # + 2 Graminoid (yellow foxtail) samples from an early attempt to add
 # herbaceous growth-form categories that was dropped as out of scope for
@@ -57,7 +57,7 @@ regions <- list(
   "Short Wave Infrared 2 (2001 nm-2500 nm)" = c(2001, 2500)
 )
 
-# --- the 4 comparisons BootstrapCode.R produces -----------------------------
+# --- the 4 comparisons ReplicatePairDifferences.R produces -----------------------------
 # file name = <SampleID>_<treatment1>_<treatment2>.csv; each row is already
 # treatment1[i,] - treatment2[j,] (raw fractional reflectance), one row per
 # of the 36 exhaustive replicate-pair combinations. Percentage-point values

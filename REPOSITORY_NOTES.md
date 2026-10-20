@@ -41,7 +41,7 @@ Mill24/
                              per sample x mill treatment
   spectralpredictr/          SpectralPredictR.R's own output CSVs (raw spectra,
                              jump-corrected, 5nm-resampled, trait predictions)
-  BootstrappedData/           output of BootstrapCode.R
+  ReplicatePairDifferences/           output of ReplicatePairDifferences.R
   LeafScans/, LMA_Processing_Training/
   manuscript/                 the manuscript draft itself (not part of the
                              code or data release)
@@ -50,7 +50,7 @@ Mill24/
                              isotope/, tpc/, fat_assay/, brookside/,
                              leaf_area/, particle_size/, spectral_metadata/,
                              ecosis/, taxonomy/, qc/, anova/, chemistry/,
-                             bootstrap/, data_join/, maps/, trait_comparisons/)
+                             replicate_pair_differences/, data_join/, maps/, trait_comparisons/)
 ```
 
 Existing top-level directory names are kept as-is where other projects on
@@ -74,7 +74,7 @@ Four `archive/` directories, one per `Workflow_*/` folder, each with its own
 - **`Workflow_Calculations/archive/`** — `BiasCalc.R`, `BiasFunctionExecution.R`,
   `BiasSummaryCalculation.R`: the original difference-spectrum approach
   (averages the 6 replicates, then differences), superseded by the
-  bootstrap pipeline (`code/BootstrapCode.R` / `code/BootstrapFigureGeneration.R`),
+  replicate-pair difference pipeline (`code/ReplicatePairDifferences.R` / `code/ReplicatePairDifferenceFigure.R`),
   which is what the manuscript describes and reports. Known parse/logic bugs
   in the archived scripts are preserved in that folder's README in case this
   chain is ever revisited.
@@ -140,7 +140,7 @@ this is the summary):
   like this can't ship silently); taxonomic harmonization against the World
   Flora Online backbone added via PR #5.
 
-**Known open issue, not yet fixed:** `BootstrapCode.R`, `DataJoin.R`, and
+**Known open issue, not yet fixed:** `ReplicatePairDifferences.R`, `DataJoin.R`, and
 `ChemistryAnalysis.R` each extract the drying/milling codes from
 `sample_name` using fixed-offset `substring()`/`substr()` calls (e.g.
 `substring(sample_name, 13, 14)` for the drying code, `substring(sample_name,
