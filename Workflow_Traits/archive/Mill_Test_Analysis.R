@@ -1,4 +1,4 @@
-# Henry makes a comment
+# Early exploratory analysis (archived).
 
 ### Mill Test Code
 

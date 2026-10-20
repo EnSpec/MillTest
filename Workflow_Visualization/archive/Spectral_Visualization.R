@@ -17,11 +17,11 @@ data_root <- Sys.getenv("MILL24_DATA_ROOT",
 
 # FLAG (2026-09-11): 5nmResampleSpectra_OM.csv is one of the per-treatment
 # SpectralPredictR splits still missing from spectralpredictr/ (see its
-# README) -- Zach hasn't staged it, and it's not the same file as
+# README) -- it was never staged, and it's not the same file as
 # SpectralPredictR_5nmresampled_spectra.csv (the un-split file
 # SpectralPredictR.R now produces for real). This script is blocked until
 # that lands or DataJoin.R's *Edit.csv split-by-treatment output is confirmed
-# as the regenerable equivalent -- see CLAUDE.md. Path de-hard-coded below,
+# as the regenerable equivalent (see data_manifest.md). Path de-hard-coded below,
 # but not run against real data.
 spectral_data = read.csv(file.path(data_root, "spectralpredictr", "5nmResampleSpectra_OM.csv"))
 
@@ -50,7 +50,7 @@ for (d in c(FigFolderOD, FigFolderFF, FigFolderODFF)) {
 # Create vector by unique species 
 spp_code <- unique(GgTreat$Species_Code)
 
-# For clarity to Phil I'm going to code an additional column by latin name for each code. Best practice is to separate data columns
+# For clarity, add a column by latin name for each code. Best practice is to separate data columns
 # by just the latin binomial and then common name in a different column
 GgTreat <- GgTreat %>% mutate(Species = case_when(
 Species_Code == 'QURU' ~ 'Quercus rubra',

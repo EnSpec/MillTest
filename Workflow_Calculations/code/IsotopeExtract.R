@@ -9,7 +9,7 @@
 # Test file in origin -- its own metadata block says Study = "BIOCORE", and
 # only its "Run2" sheets contain Mill Test rows (11 samples x FF/OD = 22
 # rows), mixed in among ~60 unrelated Biocore Tree samples run in the same
-# batch (confirmed 2026-09-17). Per chemistry-sample-handling/CLAUDE.md,
+# batch (confirmed 2026-09-17). Per the chemistry-sample-handling project's notes,
 # this isotope comparison is itself a small side-check for that project's
 # samples, not manuscript-scope analysis for either project -- the raw file
 # can't go into this deposit as-is without leaking Biocore Tree sample data.

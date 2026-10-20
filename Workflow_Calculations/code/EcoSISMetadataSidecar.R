@@ -14,7 +14,7 @@
 #
 ##################################################
 
-# 2026-09-15 (Henry): project = "Milling and drying comparison 2024",
+# 2026-09-15: project = "Milling and drying comparison 2024",
 # pi = "Philip A. Townsend", affiliation matches CITATION.cff,
 # measurement_type = measurement = "REFL" (our sampling isn't a good fit
 # for the demo's leaf-clip/canopy-style codes -- ground, milled, dried
@@ -22,13 +22,11 @@
 # milling/drying/replicate treatments as their own columns alongside the
 # standard EcoSIS fields rather than folded into measurement_type.
 #
-# NOT the final version -- see CLAUDE.md. Still open: whether "REFL" and
-# the fixed field values below match EcoSIS's actual controlled
-# vocabulary (only checked against one example deposit, not their full
-# documentation), and this depends on the duplicate-spectral-scan
-# resolution already applied upstream in SpectralMeasurementMetadata.R.
+# Status: the fixed field values below ("REFL", "Fraction", "Spectralon
+# Ratio") were checked against one example deposit, not against EcoSIS's
+# controlled-vocabulary documentation.
 #
-# 2026-09-17 (Henry): also join in particle size and the isotope/TPC/ANKOM/
+# 2026-09-17: also join in particle size and the isotope/TPC/ANKOM/
 # fat-assay chemistry data as real columns here, not just raw xlsx files
 # alongside the deposit -- the per-spectrum shape is what people will
 # actually use. See ParticleStat.R and the Isotope/TPC/Ankom/FatAssayExtract.R
@@ -36,7 +34,7 @@
 # cover every sample (isotope: 11, TPC: 60, ANKOM: 23, fat assay: 8,
 # particle size: 22) -- NA elsewhere is expected, not a join bug.
 #
-# 2026-09-17 (later, Henry): also add the full Brookside elemental panel
+# 2026-09-17 (later): also add the full Brookside elemental panel
 # (BrooksideExtract.R -- 60 samples, one assay per sample, OD + 20-mesh
 # material only, joined at the Sample_ID level same as ChemistryAnalysis.R
 # does) and the fresh/dry mass + chlorophyll values already carried in
@@ -45,7 +43,7 @@
 # at the Sample_ID level and broadcast across every treatment/replicate row
 # for that sample, same as Species/Type/coordinates already are below.
 #
-# 2026-09-17 (even later, Henry): renamed carbon_pct/nitrogen_pct to
+# 2026-09-17 (even later): renamed carbon_pct/nitrogen_pct to
 # carbon_mg_g/nitrogen_IRMS_mg_g and oil_content_pct to oil_content_mg_g,
 # converting all three to mg/g for unit consistency with the rest of the
 # deposit's chemistry values (source conversion lives in IsotopeExtract.R /
@@ -57,7 +55,7 @@
 # other tree-level fields; lma_g_m2 is computed here from that plus the
 # Dry_mass already joined in from sample_info.csv.
 
-# 2026-10-19 (Henry): isotope, TPC and fat assay values are attached to BALL
+# 2026-10-19: isotope, TPC and fat assay values are attached to BALL
 # rows only and ANKOM values to TWEN (20-mesh) rows only, matching the powder
 # each assay was run on. Previously they were copied across all three mill
 # treatments, which overstated what was measured.
@@ -101,7 +99,7 @@ particle_size <- read.csv(file.path(data_root, "derived", "particle_size",
 # treatment's powder (see assay_mill_basis below), so the value is attached
 # to that mill treatment's replicate rows only. None of these cover
 # every sample -- isotope is 11 samples, TPC/ANKOM are subsets too -- NA
-# elsewhere is expected, not a join bug. Henry's call 2026-09-17: worth
+# elsewhere is expected, not a join bug. Decided 2026-09-17: worth
 # joining these directly into the sidecar rather than only shipping raw
 # xlsx files, since the per-spectrum shape is what actually gets used.
 
@@ -110,10 +108,10 @@ tpc     <- read.csv(file.path(data_root, "derived", "tpc", "tpc_mill_test.csv"))
 ankom   <- read.csv(file.path(data_root, "derived", "ankom", "ankom_mill_test.csv"))
 fat_assay <- read.csv(file.path(data_root, "derived", "fat_assay", "fat_assay_mill_test.csv"))
 
-# Mill treatment of the powder each assay was run on (2026-10-19, Henry).
+# Mill treatment of the powder each assay was run on (2026-10-19).
 # Isotope, TPC and fat assay: ball mill (BALL). ANKOM: 20-mesh (TWEN), an
-# assay requirement. The fat assay basis was confirmed independently by Zach
-# and a second person (2026-10-19). Assay values are NA on the other mill
+# assay requirement. The fat assay basis was confirmed independently by two
+# people (2026-10-19). Assay values are NA on the other mill
 # treatments' rows, since no assay was run on that material.
 # Brookside (OD, 20-mesh) is deliberately NOT restricted: it is joined at the
 # Sample_ID level as the common reference for every treatment.
@@ -242,7 +240,7 @@ ecosis_sidecar <- spec_meta %>%
 # 7 sample x treatment combinations were scanned twice about a month apart
 # (5 Sample_IDs: 0020, 0028, 0034, 0037, 0059), giving 42 replicate-level
 # duplicates. `SpectralPredictR.R` keeps the LATER scan and drops the
-# earlier one -- confirmed with Zach 2026-09-15 as the right call for all 7
+# earlier one -- confirmed 2026-09-15 as the right call for all 7
 # cases -- so its output carries 2376 spectra. This script was not applying
 # the same rule, which left the sidecar at 2418 rows for 2376 spectra:
 # two metadata rows per affected spectrum, differing only in
