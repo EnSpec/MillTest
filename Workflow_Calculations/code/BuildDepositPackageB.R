@@ -86,7 +86,7 @@ put(d("derived", "qc_review", "qc_review_plots.pdf"), "qc_review")
 # --- leaf-area code (the notebook the interns used for the leaf scans) ---------------------
 # Copied from the repo, where it was added 2026-10-19 from
 # BioScape/ground_data/Workflow6_LeafArea_Code_Correct/Code/old_code/.
-leaf_nb <- "Workflow_Calculations/code/leaf_area/leaf_area_approvedbyTing.ipynb"
+leaf_nb <- "Workflow_Calculations/code/leaf_area/leaf_area.ipynb"
 stopifnot("run from the repo root" = file.exists(leaf_nb))
 put(leaf_nb, "leaf_area_code")
 
