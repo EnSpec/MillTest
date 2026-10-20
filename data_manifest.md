@@ -183,6 +183,8 @@ data-dependent (grouping variable per trait, bounds, thresholds) lives in
 `Workflow_Calculations/code/qc_config_milltest.R`, committed here because
 it's part of this deposit's provenance.
 
+**Grind-date correction, 2026-10-20 (Henry).** The inventory logs MILL24_0032 FF SIXT as ground 2024-02-07, before the 2024-08-08 field collection. Set to 2025-02-07 in `SpectralMeasurementMetadata.R` (a year typo: all other FF SIXT grinds fall 2025-02-03 to 2025-02-25, and 2025-02-07 was a grinding day with 9 samples; the source workbook is left as found). The script now stops if any grind date precedes the first sampling date (2024-07-30). Affects only the `grind_date` column of the sidecar (6 rows); the sidecar, QC outputs and Package A were re-run. The FF BALL grind date for 0032 is "unknown" in the log and stays blank.
+
 **QC threshold changes, 2026-10-20 (Henry).** (1) The phenolics literature bound is removed:
 TRY trait 147 holds two datasets, Kurokawa & Nakashizuka 2008 (Borneo, Folin-Ciocalteu with a
 *tannic-acid* standard, median 11.6 mg/g, max 33.23, the source of the old upper bound) and
