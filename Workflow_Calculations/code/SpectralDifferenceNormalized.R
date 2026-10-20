@@ -5,7 +5,7 @@
 # Project: Mill Test 2024
 #
 # Purpose: Appendix/supplement figure. The same four treatment-difference
-# panels as the main-text figure (BootstrapFigureGeneration.R), computed on
+# panels as the main-text figure (ReplicatePairDifferenceFigure.R), computed on
 # vector-normalized spectra instead of reflectance.
 #
 # Vector normalization (Feilhauer et al. 2010, J. Quant. Spectrosc. Radiat.
@@ -14,12 +14,12 @@
 # prediction. VN values are unitless, so the y axis is the VN difference x 100
 # (not percentage reflectance).
 #
-# Method: BootstrapCode.R enumerates all 6 x 6 = 36 replicate-pair
-# differences per sample and comparison, and BootstrapFigureGeneration.R then
+# Method: ReplicatePairDifferences.R enumerates all 6 x 6 = 36 replicate-pair
+# differences per sample and comparison, and ReplicatePairDifferenceFigure.R then
 # averages them per sample. The mean of those 36 differences is exactly
 # mean(treatment 1 replicates) - mean(treatment 2 replicates), so this script
 # computes that directly. The reflectance version is recomputed the same way
-# and checked against the existing BootstrappedData/ files, which verifies the
+# and checked against the existing ReplicatePairDifferences/ files, which verifies the
 # shortcut and the input file before the VN result is trusted.
 #
 # Input: spectralpredictr/SpectralPredictR_raw_spectra.csv (jump-corrected,
@@ -60,7 +60,7 @@ sampleinfo <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>
   select(-Species_Code) %>%
   mutate(Type = recode(Type, "Conifer" = "Needle-Leaf"))
 
-# treatment1 - treatment2, as in BootstrapCode.R's output file names
+# treatment1 - treatment2, as in ReplicatePairDifferences.R's output file names
 comparisons <- tribble(
   ~treatment1, ~treatment2, ~Comparison,                  ~sublabel,
   "OD_BALL",   "OD_TWEN",   "Ball - Coarse",              "A",
@@ -87,7 +87,7 @@ refl_diff <- sample_differences(X)
 vn_diff   <- sample_differences(X / sqrt(rowSums(X^2)))
 
 # ---- check against the stored enumerated differences -----------------------
-check_files <- list.files(file.path(data_root, "BootstrappedData"),
+check_files <- list.files(file.path(data_root, "ReplicatePairDifferences"),
                           pattern = "\\.csv$", full.names = TRUE)
 set.seed(1)
 max_dev <- 0
@@ -102,7 +102,7 @@ stopifnot(max_dev < 1e-6)  # ~1e-7 is rounding between the two source CSVs
 
 write.csv(vn_diff, file.path(out_dir, "vn_difference_by_sample.csv"), row.names = FALSE)
 
-# ---- figure (same layout as BootstrapBiasChart.png) ------------------------
+# ---- figure (same layout as ReplicatePairDifferenceChart.png) ------------------------
 to_long <- function(d) {
   d %>%
     left_join(sampleinfo, by = "sample_name") %>%
