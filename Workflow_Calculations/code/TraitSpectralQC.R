@@ -498,17 +498,32 @@ quality_flag_long <- bind_rows(lapply(names(flag_list), function(nm) {
   broadcast_to_spectra(flag_list[[nm]], nm)
 }))
 
+# Two kinds of flag, reported separately (Henry, 2026-10-19). A spectral flag
+# (every check named spectral_*) is about that one scan. A trait flag is about
+# a measured value on the tree (or tree x treatment) and is broadcast to all of
+# that tree's spectra, so a single flagged tree flags up to 36 spectra. Folding
+# them into one column made it look as if over half the spectra were suspect
+# (1306 of 2376) when only 29 carry a scan-level flag.
+quality_flag_long <- quality_flag_long %>%
+  mutate(flag_kind = if_else(grepl("^spectral_", flag_source), "spectral", "trait"))
+
+summarise_flags <- function(kind) {
+  quality_flag_long %>%
+    filter(flag_kind == kind) %>%
+    group_by(spectra) %>%
+    summarise(flag = paste(sort(unique(flag_source)), collapse = "; "),
+              n = n(), .groups = "drop") %>%
+    rename_with(~ c(paste0(kind, "_flag"), paste0("n_", kind, "_flags")), c(flag, n))
+}
+
 quality_flag_by_spectrum <- sidecar %>%
   distinct(spectra) %>%
-  left_join(
-    quality_flag_long %>%
-      group_by(spectra) %>%
-      summarise(quality_flag = paste(sort(unique(flag_source)), collapse = "; "),
-               n_checks_flagged = n(), .groups = "drop"),
-    by = "spectra"
-  ) %>%
-  mutate(quality_flag = replace_na(quality_flag, ""),
-        n_checks_flagged = replace_na(n_checks_flagged, 0L))
+  left_join(summarise_flags("spectral"), by = "spectra") %>%
+  left_join(summarise_flags("trait"), by = "spectra") %>%
+  mutate(spectral_flag = replace_na(spectral_flag, ""),
+         n_spectral_flags = replace_na(n_spectral_flags, 0L),
+         trait_flag = replace_na(trait_flag, ""),
+         n_trait_flags = replace_na(n_trait_flags, 0L))
 
 write.csv(quality_flag_by_spectrum, file.path(out_dir, "qc_quality_flag_by_spectrum.csv"), row.names = FALSE)
 
@@ -599,13 +614,16 @@ if (length(removal_spectra) > 0) {
   message("No spectra removed -- the existing spectral files need no filtering.")
 }
 
-n_flagged_spectra <- sum(quality_flag_by_spectrum$quality_flag != "")
-message(sprintf("\n%d of %d spectra (%.1f%%) carry at least one QC flag",
-                n_flagged_spectra, nrow(quality_flag_by_spectrum),
-                100 * n_flagged_spectra / nrow(quality_flag_by_spectrum)))
+n_total <- nrow(quality_flag_by_spectrum)
+n_spectral <- sum(quality_flag_by_spectrum$spectral_flag != "")
+n_trait <- sum(quality_flag_by_spectrum$trait_flag != "")
+n_any <- sum(quality_flag_by_spectrum$spectral_flag != "" | quality_flag_by_spectrum$trait_flag != "")
+message(sprintf("\n%d of %d spectra (%.1f%%) carry a spectral (scan-level) flag; %d (%.1f%%) carry a trait flag (tree-level, broadcast to its spectra); %d (%.1f%%) carry either",
+                n_spectral, n_total, 100 * n_spectral / n_total,
+                n_trait, 100 * n_trait / n_total, n_any, 100 * n_any / n_total))
 flag_reason_counts <- quality_flag_by_spectrum %>%
-  filter(quality_flag != "") %>%
-  count(quality_flag, sort = TRUE) %>%
+  filter(spectral_flag != "") %>%
+  count(spectral_flag, sort = TRUE) %>%
   as.data.frame()
 print(head(flag_reason_counts, 30))
 
