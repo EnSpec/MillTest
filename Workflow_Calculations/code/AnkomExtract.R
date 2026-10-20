@@ -109,7 +109,7 @@ ankom_all <- bind_rows(
 # assay provenance, not measurements of the plant. Also the input to the
 # start-weight check: the protocol calls for 0.5 g +/- 0.05, and a sample well
 # outside that window was either mis-weighed at entry or mis-packed
-# (Henry, 2026-09-24).
+# (2026-09-24).
 ankom_weights <- ankom_all %>%
   transmute(sample_name = Sample_ID, dry_treatment,
             bag_tare_g = tare, sample_wt_g = sample_wt,
@@ -160,7 +160,7 @@ cat(sprintf("Wrote %d rows (%d unique Mill Test samples) to %s\n",
 # wash sequence as the batch's real samples. It should only ever LOSE weight;
 # a gain means the bag leaked and took on material, which means it was
 # shedding sample material too and every sample in that batch is suspect
-# (Henry, 2026-09-23 -- ~1% gain is a threshold in common use elsewhere).
+# (2026-09-23 -- ~1% gain is a threshold in common use elsewhere).
 # Filtering these out and keeping only the sample rows threw away the one
 # piece of batch-level quality information these workbooks carry.
 read_ankom_blanks <- function(dry_treat) {

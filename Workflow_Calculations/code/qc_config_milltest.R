@@ -5,10 +5,10 @@
 # Project-specific QC configuration for the Mill Test 2024 EcoSIS deposit.
 # Committed with the repo deliberately -- this is part of the deposit's
 # provenance, not just a runtime setting (per the 2026-09-20 QC standard
-# decision in CLAUDE.md: shared checks live in enspec-qc, everything
+# decision: shared checks live in enspec-qc, everything
 # data-dependent -- grouping variable, bounds, thresholds -- lives here).
 #
-# For this deposit: FLAG-ONLY by default (timeboxed, Henry 2026-09-20), with
+# For this deposit: FLAG-ONLY by default (timeboxed, 2026-09-20), with
 # exactly one exception added 2026-09-23 -- spectra with R350 >= 0.9 are
 # removed and logged, because that can't be a real sample measure. See
 # `removal_policy` below; every other check only flags.
@@ -16,7 +16,7 @@
 # Trait bounds are split into `removable_bounds` (physically impossible
 # values) and `flag_only_bounds` (literature/TRY ranges). That split is
 # load-bearing, not cosmetic: literature ranges never drive removals
-# (Henry, 2026-09-23), and the guard next to `removal_policy` enforces it.
+# (2026-09-23), and the guard next to `removal_policy` enforces it.
 #
 ##################################################
 
@@ -26,13 +26,13 @@ library(tidyverse)
 
 # Physical/definitional bounds -- true regardless of species or literature,
 # because of how the value is computed (unit-based impossibility, matching
-# Henry's "percent carbon below 0 or above 100" example).
+# the "percent carbon below 0 or above 100" example).
 physical_bounds <- tribble(
   ~trait,           ~lower, ~upper, ~source,    ~reason,
   "water_content",  0,      0.98,   "physical", "= (Fresh_mass - Dry_mass) / Fresh_mass (field_data provenance, confirmed 2026-09-22); bounded to [0,1) by construction -- can't be negative or reach 1 (would require zero dry mass)"
 )
 
-# A negative concentration, mass or area is impossible (Henry, 2026-09-23).
+# A negative concentration, mass or area is impossible (2026-09-23).
 # Built programmatically rather than typed out 30 times, with the carve-out
 # stated explicitly so it stays auditable: ISOTOPE RATIOS ARE LEGITIMATELY
 # NEGATIVE (d13C runs about -25 to -30 permil, d15N can take either sign),
@@ -115,7 +115,7 @@ literature_bounds <- tribble(
   "cellulose_mg_g",      62.9,      426.2,    "TRY (Kattge et al. 2020)",             "Leaf cellulose content per dry mass",
   "hemicellulose_mg_g",  87.1,      450.0,    "TRY (Kattge et al. 2020)",             "Leaf hemicellulose content per dry mass",
   "lignin_recal_mg_g",   13.7,      429.0,    "TRY (Kattge et al. 2020)",             "Leaf lignin content per dry mass",
-  # PHENOLICS: NO LITERATURE BOUND (Henry, 2026-10-20). The old TRY bound
+  # PHENOLICS: NO LITERATURE BOUND (2026-10-20). The old TRY bound
   # (0.066-33.23 mg/g, trait 147 "Leaf phenols content per leaf dry mass")
   # flagged 44 of 47 trees whose values run 33.5-108.6 mg/g. TRY's metadata
   # shows why it is not a comparable reference: the trait holds only two
@@ -133,7 +133,7 @@ literature_bounds <- tribble(
   "d15N",                -14.4,     21.4,     "Craine et al. 2015, Plant and Soil",   "matches GCFR trait QC precedent (Workflow3_Outlier_Assess.R)",
   "lma_g_m2",            14,        1500,     "Wright et al. 2004, Nature",           "matches GCFR trait QC precedent (Workflow3_Outlier_Assess.R)",
 
-  # chlorophyll_1..5 -- RESOLVED 2026-09-22 (Henry pointed at
+  # chlorophyll_1..5 -- RESOLVED 2026-09-22 (units taken from
   # bioscape-ground-data/Workflow8_Foliar_Chemistry_Collate/code/
   # step1_chemistry_collation.R for the units question): that script's data
   # dictionary states its own Chl1-5 columns are "Chlorophyll measurement
@@ -173,7 +173,7 @@ literature_bounds <- tribble(
 # itself (the bound is still doing its job: surfacing values a reader
 # should know are floored, not measured).
 
-# TODO (Henry to confirm before this is final -- deliberately left NA/loose
+# TODO (to confirm before this is final -- deliberately left NA/loose
 # rather than guessed, following the "verify every number before writing it
 # down" lesson from the citation pass elsewhere in this project):
 #   - oil_content_mg_g: TRY's "Leaf lipid content per leaf dry mass" trait
@@ -191,7 +191,7 @@ placeholder_ceiling_bounds <- tribble(
 )
 
 # Two SEPARATE bounds tables, run as two separate checks -- not one combined
-# sweep (Henry, 2026-09-23). Only physically impossible values are ever
+# sweep (2026-09-23). Only physically impossible values are ever
 # candidates for removal; a literature/TRY range is flag-only, always,
 # because this lab works with very diverse material and a true value outside
 # TRY's compiled range isn't surprising. Keeping them structurally separate
@@ -201,7 +201,7 @@ removable_bounds <- bind_rows(physical_bounds, placeholder_ceiling_bounds)
 flag_only_bounds <- literature_bounds
 
 # ---- Grouping variables per trait category -----------------------------
-# Henry, 2026-09-22: tree-level physical traits are swept at the species
+# 2026-09-22: tree-level physical traits are swept at the species
 # level; chemistry is best addressed at the treatment x species level
 # (drying treatment -- FF/OD -- is the axis these assays actually vary
 # over; none were re-run per mill treatment, see EcoSISMetadataSidecar.R);
@@ -217,8 +217,8 @@ trait_groups <- list(
   drying_chemistry = list(
     traits = c("d13C", "d15N", "carbon_mg_g", "nitrogen_IRMS_mg_g", "phenolics_mg_g", "phenolics_sd",
               "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g", "oil_content_mg_g", "oil_mass_mg"),
-    # Growth form x dry treatment, not species x dry treatment (Henry,
-    # 2026-10-19). Each assay now has one value per sample x dry treatment on
+    # Growth form x dry treatment, not species x dry treatment (2026-10-19).
+    # Each assay now has one value per sample x dry treatment on
     # one mill treatment's rows (EcoSISMetadataSidecar.R), so a species group
     # holds 1-3 samples and never reaches the distribution check's min_n = 5.
     group_var = "growth_form_dry_treatment",
@@ -267,7 +267,7 @@ replicate_column_sets <- list(
 # ANKOM fiber is a sequential wash: NDF, then ADF on the NDF residue, then
 # ADL on the ADF residue. A failure at an early stage puts everything
 # derived after it in doubt, whether or not the later value looks sane
-# (Henry, 2026-09-23). Traits listed in processing order.
+# (2026-09-23). Traits listed in processing order.
 #
 # Policy is "flag", not "remove", and that's a considered choice for the one
 # case this currently fires on. MILL24_0035 FF has an impossible
@@ -278,7 +278,7 @@ replicate_column_sets <- list(
 # weight-derived agree to within ~0.7 points, and Perc_Remaining_Post_ADF is
 # consistent for every row including this one. So a single cell is wrong.
 # Cellulose (post-ADF minus post-ADL) and lignin (post-ADL) don't use that
-# cell, so they're very likely fine -- but "very likely fine, per Claude's
+# cell, so they're very likely fine -- but "very likely fine, by hand
 # arithmetic" isn't the standard for a deposit, so they get flagged for a
 # human to confirm rather than silently trusted or silently dropped.
 #
@@ -321,7 +321,7 @@ thresholds <- list(
   # flagging ordinary values (two thirds of the flagged values were within 2x
   # of their group median). Micronutrients vary far more among trees (Fe, Mn,
   # Al, Na and B span orders of magnitude), so they get a higher threshold
-  # (Henry, 2026-10-20). Everything else uses distribution_z.
+  # (2026-10-20). Everything else uses distribution_z.
   distribution_z      = 5,
   distribution_z_by_trait = c(boron_mg_g = 8, iron_mg_g = 8, manganese_mg_g = 8,
                               copper_mg_g = 8, zinc_mg_g = 8, aluminum_mg_g = 8,
@@ -366,7 +366,7 @@ thresholds <- list(
   pca_within_z        = 3,     # replicate vs. its own sample centroid
   pca_between_z       = 3,     # sample centroid vs. its group centroid
 
-  # Assay-specific checks (Henry, 2026-09-23).
+  # Assay-specific checks (2026-09-23).
   #
   # Phenolics: the TPC sheets report a mean GAE and an SD across their own
   # duplicate/triplicate measures, carried through by TPCExtract.R as
@@ -389,7 +389,7 @@ thresholds <- list(
 # The protocol calls for 0.5 g of sample per bag, +/- 0.05
 # (Hobbie_Ankom_Protocol_Frye_edited2025.docx, prep step 4), so a start weight
 # outside 0.450-0.550 g means the weighing was mis-entered or the bag was
-# mis-packed (Henry, 2026-09-24). Worth checking because the start weight is
+# mis-packed (2026-09-24). Worth checking because the start weight is
 # the denominator of all three fiber fractions: a wrong one scales every trait
 # for that sample without making any of them look impossible.
 #
@@ -407,13 +407,13 @@ ankom_weight_bounds <- tibble::tribble(
 # "albedo" (the real scan closest to the group's median brightness).
 # Mill Test is dry powder measured in a press apparatus -- a controlled
 # setting where the replicates should be near-identical and the question is
-# which one doesn't belong -- so medoid (Henry, 2026-09-23). Albedo is
+# which one doesn't belong -- so medoid (2026-09-23). Albedo is
 # expected to matter more for fresh-leaf and field spectroscopy.
 spectral_angle_reference <- "medoid"
 
 # ---- Transform before the shape checks ----------------------------------
 # The replicate-angle and PCA review checks run on SNV spectra, not
-# reflectance (Henry, 2026-09-30, same as ACRES): SNV removes the offset and
+# reflectance (2026-09-30, same as ACRES): SNV removes the offset and
 # scatter differences that particle size and packing put between scans, so
 # scans are compared on spectral shape. In this dataset's grind experiment
 # SNV cut the grind share of spectral variance from 23% to 5%
@@ -431,10 +431,10 @@ shape_qc_transform <- list(method = "snv", range = c(400, 2450))
 #     2026-09-22), so a value that high means the white reference panel or an
 #     empty puck got measured instead of the sample. `band` is left at the
 #     single band to match SHIFT exactly.
-#   spectral_nir_plateau_floor mean R1100-1300 < 0.3 (Henry, 2026-09-30): the
+#   spectral_nir_plateau_floor mean R1100-1300 < 0.3 (2026-09-30): the
 #     probe was not on a sample (in the air, over an empty well, or held above
 #     the packed powder). Dry plant powder is bright on the NIR/SWIR1 plateau.
-#     Set from deliberate bad scans (Zach Breuer, 2026-09-29,
+#     Set from deliberate bad scans (2026-09-29,
 #     /Volumes/Enspec/data/collection/lab/ASD/QCComparisonScans): blank/empty
 #     well 0.01-0.02, probe above sample 0.12-0.15. Mill Test's own minimum
 #     is 0.656 (1st percentile 0.729), so this is expected to fire on nothing;
@@ -451,7 +451,7 @@ spectral_band_checks <- list(
 #
 #   spectral_band_threshold, spectral_nir_plateau_floor - an R350 above 0.9
 #     or a NIR plateau below 0.3 can't be a real sample measure, so those
-#     spectra are dropped and logged (Henry, 2026-09-23 and 2026-09-30).
+#     spectra are dropped and logged (2026-09-23 and 2026-09-30).
 #     Neither removes anything on the current data, but the policy is correct
 #     for reruns and for adopting projects.
 #
@@ -468,7 +468,7 @@ removal_policy <- c("spectral_band_threshold", "spectral_nir_plateau_floor",
                     "trait_physical_bounds")
 
 stopifnot(
-  "literature bounds are flag-only and must not drive removals (CLAUDE.md, Henry 2026-09-23)" =
+  "literature bounds are flag-only and must not drive removals (2026-09-23)" =
     !("trait_literature_bounds" %in% removal_policy),
   "no literature-bound trait may be named in removal_policy" =
     !any(flag_only_bounds$trait %in% removal_policy)

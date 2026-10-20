@@ -178,9 +178,9 @@ ggsave(file.path(out_dir, "ChemPlotGrid.png"), ObsvsPredPlotGrid,
 # --- variance partitioning -------------------------------------------------
 # NOTE: late manuscript addition, little reviewed. Species_Code and Type are
 # collinear (Type is fixed by species), so varpart() reports "results are
-# probably incorrect". Planned fix (Henry): run the partition separately within
+# probably incorrect". Planned fix: run the partition separately within
 # each Type (Broadleaf, Conifer) and drop Type as a table. Left as-is for now
-# so the current numbers are reproducible; revisit with Zach.
+# so the current numbers are reproducible.
 
 sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %>%
   select(Sample_ID, Species_Code, Type)

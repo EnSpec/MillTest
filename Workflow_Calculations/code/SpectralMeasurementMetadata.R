@@ -21,7 +21,7 @@
 #     but empty in every file checked -- not a usable source for who took
 #     the measurement.
 #  2. Per-SAMPLE x TREATMENT (not per-replicate) grind + spectra operator,
-#     read from the measurement-log spreadsheet Zach provided 2026-09-14
+#     read from the measurement-log spreadsheet provided 2026-09-14
 #     (`field_data/mill_test_inventory_data_log.xlsx`, `Sample Inventory`
 #     sheet) -- this is where "who took the measurement" actually lives.
 
@@ -95,7 +95,7 @@ inventory <- read_excel(
   select(SampleID, DryTreat, MillTreat, Grind_Date, Grind_Person,
         Spectra_Date_inventory, Spectra_Person, Notes)
 
-# Correction to the inventory (Henry, 2026-10-20): MILL24_0032 FF SIXT is
+# Correction to the inventory (2026-10-20): MILL24_0032 FF SIXT is
 # logged as ground 2024-02-07, six months BEFORE the field collection
 # (2024-08-08). Every other FF 60-mesh grind falls 2025-02-03 to 2025-02-25,
 # and 2025-02-07 was a real grinding day (nine samples, including 0027 and

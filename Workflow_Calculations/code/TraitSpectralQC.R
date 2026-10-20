@@ -7,10 +7,10 @@
 # Purpose: Apply the shared enspec-qc trait + spectral QC checks to the
 # Mill Test EcoSIS deposit, using qc_config_milltest.R for everything
 # project-specific (grouping variables, bounds, thresholds). First real
-# implementation of the hybrid QC standard decided 2026-09-20 -- see
-# CLAUDE.md "Data QC standard" section.
+# implementation of the hybrid QC standard decided 2026-09-20 (see
+# data_manifest.md, "Data quality checks").
 #
-# FLAG-ONLY for this deposit (timeboxed, per Henry 2026-09-20): every
+# FLAG-ONLY for this deposit (timeboxed, 2026-09-20): every
 # check below only flags. qc_apply_removals() from enspec-qc is not
 # called. Output: cleaned-data-with-flag-columns, per-check flag CSVs, and
 # a combined QC report -- nothing dropped silently.
@@ -200,7 +200,7 @@ for (set_name in names(replicate_column_sets)) {
   }
 }
 
-# ---- 1d. Assay-specific checks (Henry, 2026-09-23) ---------------------
+# ---- 1d. Assay-specific checks (2026-09-23) ---------------------
 
 # Phenolics replicate precision. Uses the TPC sheets' own reported SD across
 # their duplicate/triplicate measures (carried through by TPCExtract.R), so
@@ -268,7 +268,7 @@ if (file.exists(ankom_blanks_path)) {
 # weight is the denominator of all three fiber fractions -- so a wrong one
 # scales every trait for that sample without making any of them look
 # impossible. Flag-only: a small deviation is a protocol deviation, not bad
-# data (Henry, 2026-09-24).
+# data (2026-09-24).
 ankom_weights_path <- file.path(data_root, "derived", "ankom",
                                 "ankom_sample_weights_mill_test.csv")
 if (file.exists(ankom_weights_path)) {
@@ -336,7 +336,7 @@ message("\n== Spectral QC ==")
 # reflectance data matching the deposit sidecar's column_units = "Fraction".
 # SpectralPredictR_5nmresampled_spectra.csv is NOT reflectance -- it's the
 # vector-normalized, 5nm-resampled spectra used for trait prediction (see
-# data_manifest.md and the CLAUDE.md FLAG on spectrolab::normalize()); a
+# data_manifest.md); a
 # vector-normalized spectrum has near-constant magnitude by construction
 # (median ~0.02, full-spectrum range ~0.03 -- confirmed 2026-09-22), which
 # made every spectrum look "flat" against physically-meaningful reflectance
@@ -430,7 +430,7 @@ write.csv(jump_status, file.path(out_dir, "spectral_jump_correction_status.csv")
 print(jump_status)
 if (any(jump_status$likely_corrected)) {
   message("  spectral_splice_jump: SKIPPED -- these spectra are already jump-corrected.")
-  message("  (To run this check, read the uncorrected DrySpec/*.asd binaries; see CLAUDE.md.)")
+  message("  (To run this check, read the uncorrected DrySpec/*.asd binaries; see data_manifest.md.)")
 } else {
   splice_flags <- qc_spectral_splice_jump(spec_joined, wave_cols, spec_id_cols,
                                           splices = qc_splice_defaults("asd"))
@@ -499,7 +499,7 @@ quality_flag_long <- bind_rows(lapply(names(flag_list), function(nm) {
   broadcast_to_spectra(flag_list[[nm]], nm)
 }))
 
-# Two kinds of flag, reported separately (Henry, 2026-10-19). A spectral flag
+# Two kinds of flag, reported separately (2026-10-19). A spectral flag
 # (every check named spectral_*) is about that one scan. A trait flag is about
 # a measured value on the tree (or tree x treatment) and is broadcast to all of
 # that tree's spectra, so a single flagged tree flags up to 36 spectra. Folding
@@ -571,7 +571,7 @@ write.csv(removal_log, file.path(out_dir, "removal_log.csv"), row.names = FALSE)
 
 # Trait-level removals: NA the offending VALUE, not the row -- the rest of
 # that sample's measurements are fine. Applies to physically impossible
-# values only (Henry, 2026-09-23: "any negative values should be dropped and
+# values only (2026-09-23: "any negative values should be dropped and
 # logged"). Keyed on spectra so every broadcast copy of the bad value is
 # cleared, not just the first.
 trait_removals <- bind_rows(flag_list[trait_removal_checks])

@@ -10,7 +10,7 @@
 # the hand-entered common/scientific names from the field sheet.
 #
 # Why this runs on a 14-species dataset, where harmonization looks like
-# overkill (Henry, 2026-09-24): checking is the point. A deposit that states
+# overkill (2026-09-24): checking is the point. A deposit that states
 # its names were verified against WFO -- and says which version -- is making a
 # checkable claim, and 14 names is small enough for a human to review every
 # result. Hand-entered names in this file are not guaranteed to be accepted

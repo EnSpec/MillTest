@@ -5,7 +5,7 @@
 # Project: Mill Test 2024
 #
 # Date: 1/22/2026 (rewritten 2026-09-11 for a "clean per-bin" export format
-#       that turned out not to be what Zach actually produces; rewritten
+#       that turned out not to match the instrument's real export; rewritten
 #       again 2026-09-15 for the real format -- see note below)
 #
 # Author: Zach Breuer, Mill Test Team
@@ -17,8 +17,8 @@
 # section with the software's own pre-computed Mean/Variance/Skew/Kurtosis
 # for that run, then a [#Bindiam]/[SizePctY] per-bin distribution table we
 # don't need since the moments are already computed for us). This is what
-# particle_size/data/full/ actually holds, and what Zach's own
-# (pre-cleanup) ParticleStat.R -- still the version he runs day to day --
+# particle_size/data/full/ actually holds, and what the original
+# (pre-cleanup) ParticleStat.R --
 # reads via fixed row-slice indices (507/530/532/531/49). Verified those
 # five indices land exactly on Mean/Variance/Kurtosis/Skew/GroupID in every
 # file checked, so the instrument's export format is consistent -- but
@@ -26,7 +26,7 @@
 # change, so this version looks up rows by their label (column 1) instead.
 # Kurtosis is converted from the instrument's excess-kurtosis convention to
 # the "regular"/Pearson scale (~3 for a normal distribution) via +3, same
-# as Zach's original script. GroupID (e.g. "MILL24_0005_SIXT") gives
+# as the original script. GroupID (e.g. "MILL24_0005_SIXT") gives
 # Sample + milling treatment directly; growth-form Type isn't in this
 # export at all and is joined in from field_data/sample_info.csv.
 
@@ -39,13 +39,13 @@ data_root <- Sys.getenv("MILL24_DATA_ROOT",
 out_dir <- file.path(data_root, "derived", "particle_size")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-# particle_size/data/full/ is Zach's consolidated, de-duplicated copy of the
+# particle_size/data/full/ is the consolidated, de-duplicated copy of the
 # real 22-individual x 3-treatment dataset (verified 2026-09-15: identical by
-# filename and MD5 to the union of his dated distribution/<date>_Zach/
+# filename and MD5 to the union of the dated distribution/<date>_<operator>/
 # subfolders). Read from full/ specifically, not particle_size/data/ itself --
 # the dated subfolders under distribution/ are pre-consolidation duplicates of
 # the same files, and distribution/Jun13/ holds two incomplete single-treatment
-# pilot runs (Henry, protocol testing, pre-dates Zach's real campaign) for
+# pilot runs (protocol testing, pre-dates the main campaign) for
 # samples not otherwise in the 22-individual set. Reading the parent
 # recursively would silently double-count every real sample and pull in the
 # pilot files.
@@ -77,8 +77,8 @@ read_particle_file <- function(path) {
 
   # Filenames look like MILL24_0005_SIXT_10_01.$ls.csv; GroupID inside the
   # file is normally the same "MILL24_0005_SIXT" prefix, but the two can
-  # disagree -- confirmed with Zach 2026-09-15 that when a treatment
-  # export needed redoing, his workflow was to rename the output file
+  # disagree -- confirmed 2026-09-15 that when a treatment
+  # export needed redoing, the workflow was to rename the output file
   # rather than re-run the ~10-minute measurement, which leaves GroupID
   # (baked into the file at export time) stale relative to the renamed
   # file. The filename is the authoritative label in that case; GroupID is

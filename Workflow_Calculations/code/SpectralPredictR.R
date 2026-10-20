@@ -6,9 +6,9 @@
 # Adapted 2026-09-11 to run non-interactively off data_root: both
 # `choose.dir()` picker calls (Windows-only -- not exported by `utils` on
 # Mac/Linux, confirmed by trying it here) replaced with paths/env vars.
-# Logic below is otherwise Zach's as committed 2026-09-08 (commit fbff7ec).
+# Logic below is otherwise as committed 2026-09-08 (commit fbff7ec).
 #
-# 2026-09-11: Henry confirmed Zach's actual analysis uses the upstream custom
+# 2026-09-11: confirmed the study's actual analysis uses the upstream custom
 # jump-correction method (jump_correct_specdal/apply_jump_correction below,
 # from github.com/krkovach/SpectralPredictR main branch), not the
 # spectrolab::match_sensors() call this script previously had -- swapped in.
@@ -128,12 +128,12 @@ for (j in c("asd","sed","sig"))
         data.frame(spectra,folder=i,format=j,check.names=FALSE)
         }
 
-    # Henry (2026-09-11): some samples were scanned more than once, under
-    # different dated session folders (e.g. 20250214_Annabelle vs.
-    # 20250313_Annabelle), with materially different resulting spectra --
+    # 2026-09-11: some samples were scanned more than once, under
+    # different dated session folders (e.g. 20250214_<operator> vs.
+    # 20250313_<operator>), with materially different resulting spectra --
     # not byte-identical re-copies. Keeping the later-dated scan for now
-    # (provisional -- Henry is checking with Zach for a measurement log to
-    # validate this). Folder-name dates parsed from the leading YYYYMMDD.
+    # (provisional -- no log says which scan was intended; the later
+    # date is assumed correct). Folder-name dates parsed from the leading YYYYMMDD.
     dup_ids = unique(finaloutput$sample_name[duplicated(finaloutput$sample_name)])
     if (length(dup_ids) > 0) {
       folder_date = as.Date(sub(".*/(\\d{8})_[^/]+$", "\\1", finaloutput$folder), format="%Y%m%d")
@@ -206,7 +206,7 @@ sampledata=sampledata_5nm
 write.csv(sampledata,file.path(out_dir,"SpectralPredictR_5nmresampled_spectra.csv"),row.names=FALSE)
 
 #----Predict Traits----
-# PLSR coefficient models (Wang et al. 2020b), staged locally by Henry
+# PLSR coefficient models (Wang et al. 2020), staged locally
 # 2026-09-11 from https://ecosml.org/package/github/EnSpec/NEON-Trait-Models
 # (NEON-Trait-Models-1.0_EcoSis_Version release) -- was an interactive
 # choose.dir() picker.

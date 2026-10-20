@@ -7,7 +7,7 @@
 # Purpose: Regenerate the manuscript's Table 1 (mean reflectance-percentage-
 # point difference by spectral region, treatment comparison, and growth
 # form) directly from BootstrappedData/ in R, replacing the hand-typed LaTeX
-# table (Zach Breuer, Nov 2025) to remove any risk of transcription error.
+# table (Nov 2025) to remove any risk of transcription error.
 # Cells are mean +/- the half-width of the t-based 95% CI across trees
 # (n = 61 all, 30 broadleaf, 31 needle-leaved); SD, n and the typical
 # within-tree replicate-pair SD are in table1_spectral_regions_long.csv.
@@ -35,13 +35,13 @@ sample_info <- read.csv(file.path(data_root, "field_data", "sample_info.csv")) %
 # than the manuscript's 61-individual/11-species design: 2 Forb (pokeweed)
 # + 2 Graminoid (yellow foxtail) samples from an early attempt to add
 # herbaceous growth-form categories that was dropped as out of scope for
-# this study's resources (Henry, 2026-09-16) -- real, good data, worth
+# this study's resources (2026-09-16) -- real, good data, worth
 # including in the EcoSIS deposit, but not part of this manuscript's
 # analysis population. Also 1 extra Broadleaf individual, GLTR (honey
 # locust) -- a 7th species not named anywhere in the manuscript's Sample
 # Collection text, already excluded from the Bayesian ANOVA in
 # Predicted_Trait_Analysis.R (`Species_Code != 'GLTR'`); excluded here too
-# for the same reason (Henry, 2026-09-16), so Table 1's population is
+# for the same reason (2026-09-16), so Table 1's population is
 # exactly the 61 individuals / 11 species the manuscript describes.
 design_ids <- sample_info %>%
   filter(Type %in% c("Broadleaf", "Conifer"), Species_Code != "GLTR") %>%
@@ -144,8 +144,8 @@ broadleaf_summary <- summarise_group(filter(per_sample_region, Type == "Broadlea
 conifer_summary   <- summarise_group(filter(per_sample_region, Type == "Conifer"), "Needle-Leaved")
 
 # "All Data" is a flat pool of every design-population sample (per-sample
-# equal weighting, not per-growth-form equal weighting) -- Henry's call,
-# 2026-09-16: Zach's original hand-typed table instead used the unweighted
+# equal weighting, not per-growth-form equal weighting) -- decided,
+# 2026-09-16: the original hand-typed table instead used the unweighted
 # average of the two growth-form means, which isn't representative when the
 # two groups have unequal n and isn't a convention stated anywhere in the
 # manuscript.
@@ -171,7 +171,7 @@ table1_wide <- table1_long %>%
 
 write.csv(table1_wide, file.path(out_dir, "table1_spectral_regions_wide.csv"), row.names = FALSE)
 
-# --- LaTeX table, same layout as Zach's original hand-typed version --------
+# --- LaTeX table, same layout as the original hand-typed version --------
 
 v <- function(comparison, group, region) {
   r <- table1_long %>%

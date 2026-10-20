@@ -32,7 +32,7 @@ spectraldata <- read.csv(file.path(data_root, "spectralpredictr", "SpectralPredi
   mutate(SampleID = substring(sample_name, 1, 11))
 
 
-# RESOLVED (2026-09-15, Henry): with only 6 spectral replicates per sample
+# RESOLVED (2026-09-15): with only 6 spectral replicates per sample
 # x treatment, the population of possible replicate-pair differences for
 # a given treatment comparison is small and finite -- 6 x 6 = 36 (every
 # treatment1-replicate vs. every treatment2-replicate, including "1 vs.
