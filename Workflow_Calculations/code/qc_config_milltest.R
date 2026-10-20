@@ -115,17 +115,20 @@ literature_bounds <- tribble(
   "cellulose_mg_g",      62.9,      426.2,    "TRY (Kattge et al. 2020)",             "Leaf cellulose content per dry mass",
   "hemicellulose_mg_g",  87.1,      450.0,    "TRY (Kattge et al. 2020)",             "Leaf hemicellulose content per dry mass",
   "lignin_recal_mg_g",   13.7,      429.0,    "TRY (Kattge et al. 2020)",             "Leaf lignin content per dry mass",
-  # PHENOLICS UPPER BOUND -- NEEDS HENRY'S CALL (flagged 2026-09-23).
-  # This bound flags 44 of 60 samples, values running 33.5-108.6 mg/g against
-  # a TRY max of 33.23. That pattern says "wrong bound", not "bad data": our
-  # TPC is Folin-Ciocalteu gallic-acid-equivalents on oak and conifer foliage,
-  # where tannin-rich material in the 50-150 mg/g GAE range is unremarkable,
-  # whereas TRY's "Leaf phenols content per leaf dry mass" is a small trait
-  # (n = 1225) that may not be assay-comparable. Deliberately NOT widened on
-  # my own judgement -- that's a domain call. Options: drop the upper bound
-  # like the micronutrients, substitute a GAE-specific literature range, or
-  # keep it and accept the flags as advisory.
-  "phenolics_mg_g",      0.066,     33.23,    "TRY (Kattge et al. 2020) -- SUSPECT, see note", "Leaf phenolics content per dry mass; flags 44/60 samples, likely not assay-comparable to Folin-Ciocalteu GAE",
+  # PHENOLICS: NO LITERATURE BOUND (Henry, 2026-10-20). The old TRY bound
+  # (0.066-33.23 mg/g, trait 147 "Leaf phenols content per leaf dry mass")
+  # flagged 44 of 47 trees whose values run 33.5-108.6 mg/g. TRY's metadata
+  # shows why it is not a comparable reference: the trait holds only two
+  # datasets. (1) DatasetID 52, Kurokawa & Nakashizuka 2008, Bornean tropical
+  # trees, n = 471, Folin-Ciocalteu with a TANNIC ACID standard, median 11.6,
+  # max 33.23 (this is where the upper bound came from). (2) DatasetID 252,
+  # Auger & Shipley 2012, five temperate species, n = 786, method not stated,
+  # median 0.48, max 2.02 mg/g. Ours is Folin-Ciocalteu in GALLIC-ACID
+  # equivalents (median 28.3, range 1.4-108.6 mg/g). Different standard,
+  # different taxa, and one source at ~1/50 of ours, so no range in TRY can
+  # say what a plausible GAE value is. Phenolics are still checked by the
+  # replicate CV (phenolics_max_cv); the deposit README notes that no literature
+  # range applies.
   "d13C",                -39,       -9.8,     "TRY (Kattge et al. 2020)",             "Leaf delta13C signature",
   "d15N",                -14.4,     21.4,     "Craine et al. 2015, Plant and Soil",   "matches GCFR trait QC precedent (Workflow3_Outlier_Assess.R)",
   "lma_g_m2",            14,        1500,     "Wright et al. 2004, Nature",           "matches GCFR trait QC precedent (Workflow3_Outlier_Assess.R)",
@@ -312,7 +315,21 @@ thresholds <- list(
   # raw workbooks -- worth doing if the phenolics flags need chasing down.
   bad_measure_ratio   = 2,     # qc_bad_single_measure / qc_bad_ratio_component
   magnitude_log10     = 1,     # qc_magnitude_shift
-  distribution_z      = 3.5,   # qc_distribution_outliers
+  # qc_distribution_outliers: robust z within the group. 3.5 was tuned on
+  # structural traits and N (LMA, mass, a few macronutrients), which vary
+  # little among trees of a species; with groups of 5-7 trees it was also
+  # flagging ordinary values (two thirds of the flagged values were within 2x
+  # of their group median). Micronutrients vary far more among trees (Fe, Mn,
+  # Al, Na and B span orders of magnitude), so they get a higher threshold
+  # (Henry, 2026-10-20). Everything else uses distribution_z.
+  distribution_z      = 5,
+  distribution_z_by_trait = c(boron_mg_g = 8, iron_mg_g = 8, manganese_mg_g = 8,
+                              copper_mg_g = 8, zinc_mg_g = 8, aluminum_mg_g = 8,
+                              sodium_mg_g = 8),
+  # phenolics_sd is a measurement-precision value, not a trait; it is checked
+  # by the replicate CV (phenolics_max_cv), so it is left out of the
+  # group-level magnitude and distribution checks.
+  group_check_exclude = c("phenolics_sd"),
   covariation_z       = 3,     # qc_covariation_outliers
   spectral_flat_range = 0.03,  # qc_spectral_flat
   spectral_flat_low   = 0.05,

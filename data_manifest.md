@@ -183,6 +183,18 @@ data-dependent (grouping variable per trait, bounds, thresholds) lives in
 `Workflow_Calculations/code/qc_config_milltest.R`, committed here because
 it's part of this deposit's provenance.
 
+**QC threshold changes, 2026-10-20 (Henry).** (1) The phenolics literature bound is removed:
+TRY trait 147 holds two datasets, Kurokawa & Nakashizuka 2008 (Borneo, Folin-Ciocalteu with a
+*tannic-acid* standard, median 11.6 mg/g, max 33.23, the source of the old upper bound) and
+Auger & Shipley 2012 (five temperate species, method not stated, median 0.48 mg/g), neither
+comparable to our gallic-acid-equivalent assay (median 28.3). The deposit README says so.
+(2) Group distribution outliers: robust z threshold 3.5 -> 5, and 8 for B, Fe, Mn, Cu, Zn, Al, Na
+(micronutrients vary much more among trees than the structural traits and N the 3.5 was tuned on;
+at 3.5 with 5-7 trees per species two thirds of flags were within 2x of the group median).
+`phenolics_sd` is excluded from the group checks (it is covered by the replicate-CV check).
+Result: 21 of 66 trees (612 of 2376 spectra, 25.8%) carry a trait flag, down from 57 trees
+(54.5% of spectra); scan-level spectral flags unchanged (29 spectra, 1.2%).
+
 **Flag-only, with three exceptions** (Henry, 2026-09-20 / 2026-09-23 / 2026-09-30). Every
 check writes a flag table; flags are broadcast to the per-spectrum grain and
 carried into the deposit as four columns, split by kind (2026-10-19):
