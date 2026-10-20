@@ -165,17 +165,15 @@ step's inputs come from an earlier step, that's noted explicitly.
     manuscript's spectral-difference-by-region table (cells are the mean ±
     the half-width of the 95% CI across trees) and full-resolution
     difference curves, both directly from step 11's output.
-    `Workflow_Calculations/code/ParticleSizeGrowthFormConfound.R` — because
-    broadleaved samples were milled to 60 mesh and needle-leaved to 40,
-    regresses each tree's fine − coarse spectral difference on its
-    reduction in mean particle size plus a growth-form term; needs step 3
-    (particle size) and step 11. Writes to `derived/spectral_difference/`.
-14. `Workflow_Visualization/Map_Visualization.R` — sample collection-location
-    map (supplement figure) on a public-domain USGS National Map basemap, with
-    scale bar, north arrow, species colours and a Wisconsin inset. Reads
-    `sample_info.csv` only; independent of every other step. Basemap tiles are
-    downloaded once into `derived/maps/tile_cache/` and re-used; with no
-    network and no cache the map is drawn without a basemap.
+14. `Workflow_Calculations/code/SpectralDifferenceNormalized.R` and
+    `Workflow_Calculations/code/GrindVariancePartition.R` — supplement
+    analyses. The first redraws step 12's difference-spectrum figure on
+    vector-normalized spectra; the second partitions spectral variance among
+    individuals, drying, milling and replicate scans under no transform, VN
+    and SNV, and writes the supplement table. Both read
+    `spectralpredictr/SpectralPredictR_raw_spectra.csv`.
+15. `Workflow_Visualization/Map_Visualization.R` — sample collection-location
+    map. Reads `sample_info.csv` only; independent of every other step.
 
 Everything under `*/archive/` is superseded and not part of this run order —
 see `REPOSITORY_NOTES.md` for what's there and why.
