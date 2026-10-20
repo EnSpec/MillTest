@@ -3,8 +3,9 @@ message: >-
   If you use this software, please cite it using the metadata below. See also
   the manuscript this code supports, "Effects of drying and milling
   treatments on estimates of foliar functional traits with VSWIR
-  spectroscopy" (full citation TBD), and the companion trait + spectra
-  dataset on EcoSIS (DOI TBD).
+  spectroscopy" (full citation TBD), the companion trait + spectra
+  dataset on EcoSIS (DOI TBD), and the companion data record on Zenodo
+  (https://doi.org/10.5281/zenodo.23504460).
 title: "Analysis code for the effects of drying and milling treatments on estimates of foliar functional traits with VSWIR spectroscopy"
 type: software
 license: GPL-3.0
@@ -30,7 +31,39 @@ authors:
     affiliation: "University of Wisconsin-Madison, Forest and Wildlife Ecology"
     email: ptownsend@wisc.edu
     orcid: "https://orcid.org/0000-0001-7003-8774"
+# Related-identifier slots, filled in as DOIs are minted (nothing is entered
+# as a placeholder value):
+#   - EcoSIS trait + spectra dataset (Package A): add as a `dataset` reference
+#     once its DOI exists.
+#   - This repository's own Zenodo DOI: add as `doi:` at the top level, with
+#     `version` and `date-released`, when the release is tagged.
+#   - Manuscript: add as `preferred-citation` once published.
 references:
+  # Companion data record (Package B). The DOI is RESERVED on Zenodo and will
+  # not resolve until the record is published; confirm the title and DOI against
+  # the published record.
+  - type: dataset
+    title: "Mill Test 2024: companion data record (instrument files, photographs, intermediate products and raw workbooks) for the effects of drying and milling on foliar VSWIR spectroscopy"
+    doi: "10.5281/zenodo.23504460"
+    authors:
+      - family-names: Majerus
+        given-names: Annabelle
+      - family-names: Breuer
+        given-names: Zach
+      - family-names: Donnangelo
+        given-names: Gabriela
+      - family-names: Frye
+        given-names: Henry A.
+      - family-names: Kanski
+        given-names: Ethan
+      - family-names: Vanden Heuvel
+        given-names: Cecilia
+      - family-names: Pierce
+        given-names: Erin A.
+      - family-names: Willems
+        given-names: Cole
+      - family-names: Townsend
+        given-names: Philip A.
   - type: software
     title: SpectralPredictR
     authors:
