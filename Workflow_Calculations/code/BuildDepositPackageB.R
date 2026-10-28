@@ -92,8 +92,15 @@ put(leaf_nb, "leaf_area_code")
 
 # --- raw assay workbooks (Mill Test only; checked cell by cell for other projects) ---------
 rw <- "raw_workbooks"
-put(d("ChemResults", "Ankom_Primary_Template_Zach_MillFF.xlsx"), rw)
-put(d("ChemResults", "Ankom_Primary_Template_Zach_MillOD.xlsx"), rw)
+# The ANKOM workbooks ship with the Percent_WashOff_NDF formula corrected (the
+# lab template omitted the blank-bag term; see fix_ankom_washoff.py). The
+# source workbooks on the server are left as they were.
+for (ankom_wb in c("Ankom_Primary_Template_Zach_MillFF.xlsx", "Ankom_Primary_Template_Zach_MillOD.xlsx")) {
+  dir.create(file.path(pkg, rw), recursive = TRUE, showWarnings = FALSE)
+  stopifnot(system2("python3", c("-I", "Workflow_Calculations/code/fix_ankom_washoff.py",
+                                 shQuote(d("ChemResults", ankom_wb)),
+                                 shQuote(file.path(pkg, rw, ankom_wb)))) == 0)
+}
 put(d("ChemResults", "Mill Test_FF_TPC.xlsx"), rw)
 put(d("ChemResults", "Mill Test_OD_TPC.xlsx"), rw)
 put(file.path(chem_sample_handling_root, "raw_chem_inputs", "08042026-FF BALL_GAE.xlsx"), rw)

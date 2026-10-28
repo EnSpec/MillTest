@@ -49,7 +49,7 @@ physical_bounds <- tribble(
 nonnegative_traits <- c(
   # chemistry, per dry mass
   "carbon_mg_g", "nitrogen_IRMS_mg_g", "phenolics_mg_g", "phenolics_sd",
-  "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g",
+  "nd_solubles_mg_g", "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g",
   "oil_content_mg_g", "oil_mass_mg",
   # Brookside elemental panel
   "nitrogen_mg_g", "phosphorus_mg_g", "magnesium_mg_g", "potassium_mg_g",
@@ -216,7 +216,7 @@ trait_groups <- list(
   ),
   drying_chemistry = list(
     traits = c("d13C", "d15N", "carbon_mg_g", "nitrogen_IRMS_mg_g", "phenolics_mg_g", "phenolics_sd",
-              "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g", "oil_content_mg_g", "oil_mass_mg"),
+              "nd_solubles_mg_g", "hemicellulose_mg_g", "cellulose_mg_g", "lignin_recal_mg_g", "oil_content_mg_g", "oil_mass_mg"),
     # Growth form x dry treatment, not species x dry treatment (2026-10-19).
     # Each assay now has one value per sample x dry treatment on
     # one mill treatment's rows (EcoSISMetadataSidecar.R), so a species group
