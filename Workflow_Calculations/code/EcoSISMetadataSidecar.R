@@ -203,6 +203,7 @@ ecosis_sidecar <- spec_meta %>%
     nitrogen_IRMS_mg_g     = nitrogen_IRMS_mg_g,
     phenolics_mg_g         = phenolics_mg_g,
     phenolics_sd           = phenolics_sd,
+    nd_solubles_mg_g       = nd_solubles_mg_g,
     hemicellulose_mg_g     = hemicellulose_mg_g,
     cellulose_mg_g         = cellulose_mg_g,
     lignin_recal_mg_g      = lignin_recal_mg_g,

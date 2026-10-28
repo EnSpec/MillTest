@@ -56,6 +56,14 @@ ankom_path <- function(dry_treat) {
 #   % cellulose           = ((wt_ADF - tare * C_ADF)
 #                            - (wt_ADL - tare * C_ADL)) * 100 / sample wt.
 #   % lignin+recalcitrant = (wt_ADL - tare * C_ADL) * 100 / sample wt.
+#   % neutral detergent solubles (cell contents, washed off in NDF)
+#                         = ((tare * C_NDF + sample wt.) - wt_NDF) * 100 / sample wt.
+#                         = 100 - % left after NDF
+#
+# The solubles formula carries the blank-bag term (tare * C_NDF). The original
+# protocol and the lab templates (Percent_WashOff_NDF) omitted it, so their
+# reported wash-off is not used here; corrected 2026-10-28 after the 2026-10-21
+# finding in ankom-audit.
 #
 # Each batch of 24 carries one empty blank bag, whose weight after each wash
 # gives that batch's correction factor (protocol step 4).
@@ -80,6 +88,8 @@ read_ankom_sheet <- function(dry_treat) {
       resid_ndf     = as.double(Weigth_After_NDF) - tare * c_ndf,
       resid_adf     = as.double(Weight_After_ADF) - tare * c_adf,
       resid_adl     = as.double(Weight_After_ADL) - tare * c_adl,
+      # neutral detergent solubles (cell contents), % of sample dry mass -> mg/g
+      nd_solubles_mg_g   = (sample_wt - resid_ndf) * 100 / sample_wt * 10,
       # the three reported fractions, as % of sample dry mass -> mg/g
       hemicellulose_mg_g = (resid_ndf - resid_adf) * 100 / sample_wt * 10,
       cellulose_mg_g     = (resid_adf - resid_adl) * 100 / sample_wt * 10,
@@ -146,7 +156,7 @@ cat(sprintf("Wrote %d reported-vs-recomputed comparisons to %s\n",
 # Recomputed values are the ones that go forward: they follow the protocol
 # directly and cannot inherit a shifted cell reference from the workbook.
 ankom_mill_test <- ankom_all %>%
-  select(Sample_ID, dry_treatment,
+  select(Sample_ID, dry_treatment, nd_solubles_mg_g,
          hemicellulose_mg_g, cellulose_mg_g, lignin_recal_mg_g)
 
 write.csv(ankom_mill_test, file.path(out_dir, "ankom_mill_test.csv"), row.names = FALSE)
