@@ -16,7 +16,7 @@ and plant probe, and a subset was sent for elemental, isotope, fiber,
 phenolic, and fat-content analysis, and particle-size analysis. See the
 manuscript methods for full detail.
 
-- **Data deposit** (spectra, traits, chemistry, instrument files): Zenodo — https://doi.org/10.5281/zenodo.23504460 (a reduced spectra + metadata copy is also listed on EcoSIS for discoverability)
+- **Data deposit** (spectra, traits, chemistry, instrument files): Zenodo, version 1.0 (published 2026-11-03) — https://doi.org/10.5281/zenodo.23504460 (a reduced spectra + metadata copy is also listed on EcoSIS for discoverability)
 - **Code DOI**: Zenodo — TBD
 
 ## Treatments and sample naming
