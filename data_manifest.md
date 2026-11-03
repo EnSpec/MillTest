@@ -15,6 +15,8 @@ users, not the project's own scope history.
 
 ## Deposit layout (decided 2026-09-30): EcoSIS package + Zenodo data record
 
+**SUPERSEDED 2026-11-03 (Henry): EcoSIS is unavailable (bot attacks, no timeline), so Packages A and B are merged into ONE Zenodo record (DOI 10.5281/zenodo.23504460, reserved).** `Workflow_Calculations/code/BuildDepositZenodo.R` verifies both packages against their manifests, merges them into `deposit/zenodo_record/` (2980 files, 1216 MB) with the single README `derived/README_zenodo_deposit.txt`, a new MD5 manifest, and a zip (`deposit/Mill24_data_record.zip`, no `__MACOSX`). A slim EcoSIS copy (spectra + sidecar with QC flags + short README `derived/README_ecosis_slim.txt`, 52.5 MB) is built to `deposit/ecosis_slim/` for upload later; Zenodo stays the primary, citable source. The A/B tables below still describe the contents.
+
 **Why:** Kate Thompson (EcoSIS), relaying Justin, 2026-09-30: no hard size limit, but ~50 MB is getting close and ~100 MB only if absolutely required; put intermediate processing data elsewhere (GitHub etc.) and link it from the EcoSIS package; multiple related submissions are fine if the description explains how they connect. Henry's decision: **hybrid**. The spectra and their metadata go to EcoSIS regardless; everything else goes to a Zenodo data record with its own DOI, linked from the EcoSIS description (editable after publication, no new DOI). The code repo keeps its own separate Zenodo DOI. The groupings below are a proposal from that decision; confirm each assignment before assembling.
 
 **Package A: EcoSIS (built 2026-10-19: 138 files, 58.5 MB, `deposit/package_A/` on the server)**

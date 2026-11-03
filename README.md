@@ -16,7 +16,7 @@ and plant probe, and a subset was sent for elemental, isotope, fiber,
 phenolic, and fat-content analysis, and particle-size analysis. See the
 manuscript methods for full detail.
 
-- **Data deposit** (traits + spectra): EcoSIS — DOI TBD
+- **Data deposit** (spectra, traits, chemistry, instrument files): Zenodo — https://doi.org/10.5281/zenodo.23504460 (a reduced spectra + metadata copy is also listed on EcoSIS for discoverability)
 - **Code DOI**: Zenodo — TBD
 
 ## Treatments and sample naming
@@ -43,10 +43,10 @@ Trait-prediction inputs from SpectralPredictR carry the same information in a
 This repository's code is public and documents the full method, but the raw
 instrument output, field metadata, and shared multi-project lab files it
 reads are not in the repo — they live on the EnSpec lab's internal server
-and are staged into the public trait+spectra deposit above (EcoSIS) rather
+and are staged into the public Zenodo deposit above rather
 than committed here directly. An external reader can follow and evaluate the
 method in full from the code; literally re-running it end to end needs
-either that EcoSIS deposit or lab server access.
+either that Zenodo deposit or lab server access.
 
 Every script resolves its data location the same way:
 
@@ -105,7 +105,7 @@ step's inputs come from an earlier step, that's noted explicitly.
    content), `FatAssayExtract.R`, `BrooksideExtract.R` (full elemental
    panel), `LeafAreaExtract.R`.
 
-**2. EcoSIS deposit build** (needs steps 2–4 above)
+**2. Data deposit build** (needs steps 2–4 above)
 
 5. `Workflow_Calculations/code/EcoSISMetadataSidecar.R` — joins the
    measurement metadata (step 2), particle size (step 3), and all six
@@ -123,6 +123,14 @@ step's inputs come from an earlier step, that's noted explicitly.
    raw-weight comparison (step 4's `AnkomExtract.R` output). Writes
    `spectral_metadata_sidecar_with_qc_flags.csv` and one CSV per check under
    `derived/qc/`.
+
+   Then, after the manuscript analyses in section 3 have been run (the
+   deposit includes their outputs), assemble the Zenodo record:
+   `Workflow_Calculations/code/BuildDepositPackageA.R` (spectra, sidecar, QC
+   and cleaned chemistry) and `BuildDepositPackageB.R` (instrument files,
+   photographs, intermediates, raw workbooks) each build a checked folder with
+   an MD5 manifest, and `BuildDepositZenodo.R` merges the two into the single
+   record with one README, plus a reduced spectra-and-metadata copy for EcoSIS.
 
 **3. Manuscript analysis** (needs step 1; independent of the deposit build)
 
