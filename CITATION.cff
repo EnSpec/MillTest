@@ -40,10 +40,9 @@ authors:
 #   - Manuscript: add as `preferred-citation` once published.
 references:
   # Data record on Zenodo (spectra, chemistry, instrument files and supporting
-  # files). The DOI is RESERVED and will not resolve until the record is
-  # published; confirm the title and DOI against the published record.
+  # files). Published 2026-11-03 (version 1.0); title as on the record.
   - type: dataset
-    title: "Mill Test 2024: foliar spectroscopy, milling and drying comparison, and chemistry data record"
+    title: "Supporting data for the effects of drying and milling treatments on estimates of foliar functional traits with VSWIR spectroscopy: leaf scans, processed spectra and replicate-pair differences"
     doi: "10.5281/zenodo.23504460"
     authors:
       - family-names: Majerus
