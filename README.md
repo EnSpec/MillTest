@@ -198,6 +198,13 @@ see `REPOSITORY_NOTES.md` for what's there and why.
   `officer`) needs a working `gdtools` build, which on macOS needs a
   Homebrew `pkg-config` + `gettext` setup not captured by `renv.lock` — see
   `REPOSITORY_NOTES.md` if `renv::restore()` fails on `gdtools`.
+- A few packages (e.g. `xfun`) have no prebuilt macOS binary at their locked
+  version and compile from source. If that fails at the link step with
+  `tapi error: malformed file` / `unknown architecture`, the active Xcode or
+  Command Line Tools SDK is broken (seen with a macOS 27.0 SDK). Point at a
+  working SDK and re-run, e.g.
+  `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk Rscript -e 'renv::restore()'`
+  (`ls /Library/Developer/CommandLineTools/SDKs` lists what is installed).
 
 ## AI use disclosure
 

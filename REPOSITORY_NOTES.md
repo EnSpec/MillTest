@@ -169,5 +169,8 @@ which on macOS needs Homebrew's `pkg-config` installed and
 `LDFLAGS`/`CPPFLAGS` pointing at Homebrew's keg-only `gettext` added to
 `~/.R/Makevars` — without this, `gdtools` fails to link
 (`ld: library 'intl' not found`). Neither the brew install nor the Makevars
-edit is captured by `renv.lock`. A fresh `renv::restore()` on a clean
-machine has not been tested end-to-end; expect to hit this.
+edit is captured by `renv.lock`. A fresh `renv::restore()` from a clean
+clone and empty cache was tested on 2026-11-03 (macOS, R 4.4.1) and restored
+all 227 packages with `renv::status()` consistent. The one failure was `xfun`
+failing to link against a malformed macOS 27.0 SDK; setting `SDKROOT` to the
+26.5 SDK fixed it (see README, Environment).
