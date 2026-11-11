@@ -133,3 +133,14 @@ particle_summary <- particle_moments %>%
 print(particle_summary)
 write.csv(particle_moments, file.path(out_dir, "particle_size_per_sample.csv"), row.names = FALSE)
 write.csv(particle_summary, file.path(out_dir, "particle_size_summary.csv"), row.names = FALSE)
+
+# --- pooled by milling treatment (numbers quoted in the manuscript Results) ---
+# Treatment comes from the file name, not the GroupID stored inside the file
+# (two exports carry a stale internal GroupID; see GroupID_mismatch above).
+# SD is the pooled SD: sqrt of the mean per-sample variance.
+particle_pooled <- particle_moments %>%
+  group_by(Treatment) %>%
+  summarise(n = n(), Mean = mean(Mean), SD = sqrt(mean(Variance)),
+            mean_of_sample_SDs = mean(sqrt(Variance)), .groups = "drop")
+print(particle_pooled)
+write.csv(particle_pooled, file.path(out_dir, "particle_size_pooled_by_treatment.csv"), row.names = FALSE)
