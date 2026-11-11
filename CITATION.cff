@@ -9,6 +9,9 @@ message: >-
 title: "Analysis code for the effects of drying and milling treatments on estimates of foliar functional traits with VSWIR spectroscopy"
 type: software
 license: GPL-3.0
+version: "1.2"
+date-released: "2026-11-11"
+doi: "10.5281/zenodo.24136458"
 repository-code: "https://github.com/EnSpec/MillTest"
 authors:
   - family-names: Frye
@@ -35,8 +38,7 @@ authors:
 # as a placeholder value):
 #   - EcoSIS reduced copy (spectra + metadata only, for discoverability): not
 #     cited here; the Zenodo record is the primary dataset.
-#   - This repository's own Zenodo DOI: add as `doi:` at the top level, with
-#     `version` and `date-released`, when the release is tagged.
+#   - This repository's own Zenodo DOI (v1.2) is the top-level `doi:`.
 #   - Manuscript: add as `preferred-citation` once published.
 references:
   # Data record on Zenodo (spectra, chemistry, instrument files and supporting
