@@ -11,7 +11,7 @@ type: software
 license: GPL-3.0
 version: "1.2"
 date-released: "2026-11-11"
-doi: "10.5281/zenodo.24136458"
+doi: "10.5281/zenodo.24143221"
 repository-code: "https://github.com/EnSpec/MillTest"
 authors:
   - family-names: Frye
